@@ -215,13 +215,6 @@ LIBHUNSPELL_DLL_EXPORTED int uniqlist(char** list, int n);
 // free character array list
 LIBHUNSPELL_DLL_EXPORTED void freelist(char*** list, int n);
 
-// character encoding information
-struct cs_info {
-  unsigned char ccase;
-  unsigned char clower;
-  unsigned char cupper;
-};
-
 LIBHUNSPELL_DLL_EXPORTED int initialize_utf_tbl();
 LIBHUNSPELL_DLL_EXPORTED void free_utf_tbl();
 LIBHUNSPELL_DLL_EXPORTED unsigned short unicodetoupper(unsigned short c,
@@ -229,8 +222,6 @@ LIBHUNSPELL_DLL_EXPORTED unsigned short unicodetoupper(unsigned short c,
 LIBHUNSPELL_DLL_EXPORTED unsigned short unicodetolower(unsigned short c,
                                                        int langnum);
 LIBHUNSPELL_DLL_EXPORTED int unicodeisalpha(unsigned short c);
-
-LIBHUNSPELL_DLL_EXPORTED struct cs_info* get_current_cs(const char* es);
 
 // get language identifiers of language codes
 LIBHUNSPELL_DLL_EXPORTED int get_lang_num(const char* lang);
@@ -253,21 +244,6 @@ LIBHUNSPELL_DLL_EXPORTED void enmkinitcap(char* d,
                                           const char* p,
                                           const char* encoding);
 
-// convert null terminated string to all caps
-LIBHUNSPELL_DLL_EXPORTED void mkallcap(char* p, const struct cs_info* csconv);
-// convert std::string to all caps
-LIBHUNSPELL_DLL_EXPORTED std::string& mkallcap(std::string& s,
-                                               const struct cs_info* csconv);
-
-// convert null terminated string to all little
-LIBHUNSPELL_DLL_EXPORTED void mkallsmall(char* p, const struct cs_info* csconv);
-// convert null terminated string to all little
-LIBHUNSPELL_DLL_EXPORTED std::string& mkallsmall(std::string& s,
-                                                 const struct cs_info* csconv);
-
-// convert null terminated string to have initial capital
-LIBHUNSPELL_DLL_EXPORTED void mkinitcap(char* p, const struct cs_info* csconv);
-
 // convert first nc characters of UTF-8 string to little
 LIBHUNSPELL_DLL_EXPORTED void mkallsmall_utf(w_char* u, int nc, int langnum);
 // convert first nc characters of UTF-8 string to little
@@ -279,9 +255,6 @@ LIBHUNSPELL_DLL_EXPORTED void mkallcap_utf(w_char* u, int nc, int langnum);
 // convert first nc characters of UTF-8 string to capital
 LIBHUNSPELL_DLL_EXPORTED std::vector<w_char>&
 mkallcap_utf(std::vector<w_char>& u, int nc, int langnum);
-
-// get type of capitalization
-LIBHUNSPELL_DLL_EXPORTED int get_captype(char* q, int nl, cs_info*);
 
 // get type of capitalization (UTF-8)
 LIBHUNSPELL_DLL_EXPORTED int get_captype_utf8(w_char* q, int nl, int langnum);
@@ -311,7 +284,6 @@ LIBHUNSPELL_DLL_EXPORTED int parse_array(char* line,
                                          char** out,
                                          unsigned short** out_utf16,
                                          int* out_utf16_len,
-                                         int utf8,
                                          int ln);
 
 LIBHUNSPELL_DLL_EXPORTED int fieldlen(const char* r);

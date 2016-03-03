@@ -103,9 +103,6 @@ class LIBHUNSPELL_DLL_EXPORTED AffixMgr {
   int* maxdic;
   char* keystring;
   char* trystring;
-  char* encoding;
-  struct cs_info* csconv;
-  int utf8;
   int complexprefixes;
   FLAG compoundflag;
   FLAG compoundbegin;
@@ -250,7 +247,7 @@ class LIBHUNSPELL_DLL_EXPORTED AffixMgr {
                  const char* targetmorph,
                  int level);
 
-  int expand_rootword(struct guessword* wlst,
+  int expand_rootword(guessword* wlst,
                       int maxn,
                       const char* ts,
                       int wl,
@@ -312,7 +309,6 @@ class LIBHUNSPELL_DLL_EXPORTED AffixMgr {
   struct mapentry* get_maptable() const;
   int get_numbreak() const;
   char** get_breaktable() const;
-  char* get_encoding();
   int get_langnum() const;
   char* get_key_string();
   char* get_try_string() const;
@@ -336,7 +332,6 @@ class LIBHUNSPELL_DLL_EXPORTED AffixMgr {
   const char* get_derived() const;
   const char* get_version() const;
   int have_contclass() const;
-  int get_utf8() const;
   int get_complexprefixes() const;
   char* get_suffixed(char) const;
   int get_maxngramsugs() const;

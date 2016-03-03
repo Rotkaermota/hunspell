@@ -37,8 +37,6 @@
 #include "hunvisapi.h"
 
 struct phonetable {
-  char utf8;
-  cs_info* lang;
   int num;
   char** rules;
   int hash[HASHSIZE];

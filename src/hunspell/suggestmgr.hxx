@@ -119,8 +119,6 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
 
   AffixMgr* pAMgr;
   int maxSug;
-  struct cs_info* csconv;
-  int utf8;
   int langnum;
   int nosplitsugs;
   int maxngramsugs;
@@ -152,7 +150,6 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
   int checkword(const char*, int, int, int*, clock_t*);
   int check_forbidden(const char*, int);
 
-  int capchars(char**, const char*, int, int);
   int replchars(char**, const char*, int, int);
   int doubletwochars(char**, const char*, int, int);
   int forgotchar(char**, const char*, int, int);
@@ -160,7 +157,6 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
   int longswapchar(char**, const char*, int, int);
   int movechar(char**, const char*, int, int);
   int extrachar(char**, const char*, int, int);
-  int badcharkey(char**, const char*, int, int);
   int badchar(char**, const char*, int, int);
   int twowords(char**, const char*, int, int);
   int fixstems(char**, const char*, int);

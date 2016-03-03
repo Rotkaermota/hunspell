@@ -88,12 +88,9 @@ class LIBHUNSPELL_DLL_EXPORTED HashMgr {
   struct hentry** tableptr;
   flag flag_mode;
   int complexprefixes;
-  int utf8;
   unsigned short forbiddenword;
   int langnum;
-  char* enc;
   char* lang;
-  struct cs_info* csconv;
   char* ignorechars;
   unsigned short* ignorechars_utf16;
   int ignorechars_utf16_len;

@@ -88,7 +88,6 @@ HashMgr::HashMgr(const char* tpath, const char* apath, const char* key)
       tableptr(NULL),
       flag_mode(FLAG_CHAR),
       complexprefixes(0),
-      utf8(0),
       forbiddenword(FORBIDDENWORD)  // forbidden word signing flag
       ,
       numaliasf(0),
@@ -98,8 +97,6 @@ HashMgr::HashMgr(const char* tpath, const char* apath, const char* key)
       aliasm(NULL) {
   langnum = 0;
   lang = NULL;
-  enc = NULL;
-  csconv = 0;
   ignorechars = NULL;
   ignorechars_utf16 = NULL;
   ignorechars_utf16_len = 0;
@@ -153,15 +150,8 @@ HashMgr::~HashMgr() {
     aliasm = NULL;
   }
 
-#ifndef OPENOFFICEORG
-#ifndef MOZILLA_CLIENT
-  if (utf8)
     free_utf_tbl();
-#endif
-#endif
 
-  if (enc)
-    free(enc);
   if (lang)
     free(lang);
 
@@ -170,9 +160,6 @@ HashMgr::~HashMgr() {
   if (ignorechars_utf16)
     free(ignorechars_utf16);
 
-#ifdef MOZILLA_CLIENT
-  delete[] csconv;
-#endif
 }
 
 // lookup a root word in the hashtable
@@ -209,17 +196,10 @@ int HashMgr::add_word(const char* word,
   char* hpw = hp->word;
   strcpy(hpw, word);
   if (ignorechars != NULL) {
-    if (utf8) {
       remove_ignored_chars_utf(hpw, ignorechars_utf16, ignorechars_utf16_len);
-    } else {
-      remove_ignored_chars(hpw, ignorechars);
-    }
   }
   if (complexprefixes) {
-    if (utf8)
       reverseword_utf(hpw);
-    else
-      reverseword(hpw);
   }
 
   int i = hash(hpw);
@@ -240,10 +220,7 @@ int HashMgr::add_word(const char* word,
     } else {
       strcpy(hpw + wbl + 1, desc);
       if (complexprefixes) {
-        if (utf8)
           reverseword_utf(HENTRY_DATA(hp));
-        else
-          reverseword(HENTRY_DATA(hp));
       }
     }
     if (strstr(HENTRY_DATA(hp), MORPH_PHON))
@@ -325,7 +302,6 @@ int HashMgr::add_hidden_capitalized_word(char* word,
     if (flagslen)
       memcpy(flags2, flags, flagslen * sizeof(unsigned short));
     flags2[flagslen] = ONLYUPCASEFLAG;
-    if (utf8) {
       char st[BUFSIZE];
       w_char w[BUFSIZE];
       int wlen = u8_u16(w, BUFSIZE, word);
@@ -333,27 +309,16 @@ int HashMgr::add_hidden_capitalized_word(char* word,
       mkallcap_utf(w, 1, langnum);
       u16_u8(st, BUFSIZE, w, wlen);
       return add_word(st, wbl, wcl, flags2, flagslen + 1, dp, true);
-    } else {
-      mkallsmall(word, csconv);
-      mkinitcap(word, csconv);
-      return add_word(word, wbl, wcl, flags2, flagslen + 1, dp, true);
-    }
   }
   return 0;
 }
 
 // detect captype and modify word length for UTF-8 encoding
 int HashMgr::get_clen_and_captype(const char* word, int wbl, int* captype) {
-  int len;
-  if (utf8) {
     w_char dest_utf[BUFSIZE];
-    len = u8_u16(dest_utf, BUFSIZE, word);
+    int len = u8_u16(dest_utf, BUFSIZE, word);
     *captype = get_captype_utf8(dest_utf, len, langnum);
-  } else {
-    len = wbl;
-    *captype = get_captype((char*)word, len, csconv);
-  }
-  return len;
+    return len;
 }
 
 // remove word (personal dictionary function for standalone applications)
@@ -798,21 +763,23 @@ int HashMgr::load_config(const char* affpath, const char* key) {
       forbiddenword = decode_flag(st);
       free(st);
     }
+    char *enc = nullptr;
     if (strncmp(line, "SET", 3) == 0) {
       if (parse_string(line, &enc, afflst->getlinenum())) {
         delete afflst;
+        if (enc) free(enc);
         return 1;
       }
       if (strcmp(enc, "UTF-8") == 0) {
-        utf8 = 1;
-#ifndef OPENOFFICEORG
-#ifndef MOZILLA_CLIENT
         initialize_utf_tbl();
-#endif
-#endif
       } else
-        csconv = get_current_cs(enc);
+      {
+          if (enc) free(enc);
+          delete afflst;
+          return 1;
+      }
     }
+    if (enc) free(enc);
     if (strncmp(line, "LANG", 4) == 0) {
       if (parse_string(line, &lang, afflst->getlinenum())) {
         delete afflst;
@@ -825,7 +792,7 @@ int HashMgr::load_config(const char* affpath, const char* key) {
      * characters */
     if (strncmp(line, "IGNORE", 6) == 0) {
       if (parse_array(line, &ignorechars, &ignorechars_utf16,
-                      &ignorechars_utf16_len, utf8, afflst->getlinenum())) {
+                      &ignorechars_utf16_len, afflst->getlinenum())) {
         delete afflst;
         return 1;
       }
@@ -851,8 +818,6 @@ int HashMgr::load_config(const char* affpath, const char* key) {
         isspace(line[3]))
       break;
   }
-  if (csconv == NULL)
-    csconv = get_current_cs(SPELL_ENCODING);
   delete afflst;
   return 0;
 }
@@ -1071,10 +1036,7 @@ int HashMgr::parse_aliasm(char* line, FileMgr* af) {
               tp = tp + strlen(tp);
             }
             if (complexprefixes) {
-              if (utf8)
                 reverseword_utf(piece);
-              else
-                reverseword(piece);
             }
             aliasm[j] = mystrdup(piece);
             if (!aliasm[j]) {

@@ -101,10 +101,7 @@ class LIBHUNSPELL_DLL_EXPORTED Hunspell {
   int maxdic;
   SuggestMgr* pSMgr;
   char* affixpath;
-  char* encoding;
-  struct cs_info* csconv;
   int langnum;
-  int utf8;
   int complexprefixes;
   char** wordbreak;
 
@@ -159,8 +156,6 @@ class LIBHUNSPELL_DLL_EXPORTED Hunspell {
   /* deallocate suggestion lists */
 
   void free_list(char*** slst, int n);
-
-  char* get_dic_encoding();
 
   /* morphological functions */
 
@@ -218,7 +213,6 @@ class LIBHUNSPELL_DLL_EXPORTED Hunspell {
   const char* get_wordchars();
   unsigned short* get_wordchars_utf16(int* len);
 
-  struct cs_info* get_csconv();
   const char* get_version();
 
   int get_langnum() const;
@@ -251,7 +245,6 @@ class LIBHUNSPELL_DLL_EXPORTED Hunspell {
   int mkinitsmall2(char* p, w_char* u, int nc);
   void mkallcap(char*);
   int mkallcap2(char* p, w_char* u, int nc);
-  void mkallsmall(char*);
   int mkallsmall2(char* p, w_char* u, int nc);
   struct hentry* checkword(const char*, int* info, char** root);
   char* sharps_u8_l1(char* dest, char* source);
