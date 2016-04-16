@@ -76,6 +76,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <limits>
+#include <sstream>
 
 #include "hashmgr.hxx"
 #include "csutil.hxx"
@@ -98,8 +99,6 @@ HashMgr::HashMgr(const char* tpath, const char* apath, const char* key)
   langnum = 0;
   lang = NULL;
   ignorechars = NULL;
-  ignorechars_utf16 = NULL;
-  ignorechars_utf16_len = 0;
   load_config(apath, key);
   int ec = load_tables(tpath, key);
   if (ec) {
@@ -157,8 +156,6 @@ HashMgr::~HashMgr() {
 
   if (ignorechars)
     free(ignorechars);
-  if (ignorechars_utf16)
-    free(ignorechars_utf16);
 
 }
 
@@ -186,21 +183,46 @@ int HashMgr::add_word(const char* word,
                       int al,
                       const char* desc,
                       bool onlyupcase) {
+
+  std::string *word_copy = NULL;
+  std::string *desc_copy = NULL;
+  if (ignorechars || complexprefixes) {
+    word_copy = new std::string(word, wbl);
+
+    if (ignorechars != NULL) {
+        wcl = remove_ignored_chars_utf(*word_copy, ignorechars_utf16);
+    }
+
+    if (complexprefixes) {
+        wcl = reverseword_utf(*word_copy);
+
+      if (desc && !aliasm) {
+        desc_copy = new std::string(desc);
+
+        if (complexprefixes) {
+            reverseword_utf(*desc_copy);
+        }
+        desc = desc_copy->c_str();
+      }
+    }
+
+    wbl = word_copy->size();
+    word = word_copy->c_str();
+  }
+
   bool upcasehomonym = false;
   int descl = desc ? (aliasm ? sizeof(char*) : strlen(desc) + 1) : 0;
   // variable-length hash record with word and optional fields
   struct hentry* hp =
       (struct hentry*)malloc(sizeof(struct hentry) + wbl + descl);
-  if (!hp)
+  if (!hp) {
+    delete desc_copy;
+    delete word_copy;
     return 1;
+  }
+
   char* hpw = hp->word;
   strcpy(hpw, word);
-  if (ignorechars != NULL) {
-      remove_ignored_chars_utf(hpw, ignorechars_utf16, ignorechars_utf16_len);
-  }
-  if (complexprefixes) {
-      reverseword_utf(hpw);
-  }
 
   int i = hash(hpw);
 
@@ -219,9 +241,6 @@ int HashMgr::add_word(const char* word,
       store_pointer(hpw + wbl + 1, get_aliasm(atoi(desc)));
     } else {
       strcpy(hpw + wbl + 1, desc);
-      if (complexprefixes) {
-          reverseword_utf(HENTRY_DATA(hp));
-      }
     }
     if (strstr(HENTRY_DATA(hp), MORPH_PHON))
       hp->var += H_OPT_PHON;
@@ -231,6 +250,8 @@ int HashMgr::add_word(const char* word,
   struct hentry* dp = tableptr[i];
   if (!dp) {
     tableptr[i] = hp;
+    delete desc_copy;
+    delete word_copy;
     return 0;
   }
   while (dp->next != NULL) {
@@ -242,6 +263,8 @@ int HashMgr::add_word(const char* word,
           dp->astr = hp->astr;
           dp->alen = hp->alen;
           free(hp);
+          delete desc_copy;
+          delete word_copy;
           return 0;
         } else {
           dp->next_homonym = hp;
@@ -260,6 +283,8 @@ int HashMgr::add_word(const char* word,
         dp->astr = hp->astr;
         dp->alen = hp->alen;
         free(hp);
+        delete desc_copy;
+        delete word_copy;
         return 0;
       } else {
         dp->next_homonym = hp;
@@ -276,11 +301,13 @@ int HashMgr::add_word(const char* word,
       free(hp->astr);
     free(hp);
   }
+
+  delete desc_copy;
+  delete word_copy;
   return 0;
 }
 
-int HashMgr::add_hidden_capitalized_word(char* word,
-                                         int wbl,
+int HashMgr::add_hidden_capitalized_word(const std::string& word,
                                          int wcl,
                                          unsigned short* flags,
                                          int flagslen,
@@ -302,23 +329,24 @@ int HashMgr::add_hidden_capitalized_word(char* word,
     if (flagslen)
       memcpy(flags2, flags, flagslen * sizeof(unsigned short));
     flags2[flagslen] = ONLYUPCASEFLAG;
-      char st[BUFSIZE];
-      w_char w[BUFSIZE];
-      int wlen = u8_u16(w, BUFSIZE, word);
-      mkallsmall_utf(w, wlen, langnum);
-      mkallcap_utf(w, 1, langnum);
-      u16_u8(st, BUFSIZE, w, wlen);
-      return add_word(st, wbl, wcl, flags2, flagslen + 1, dp, true);
+      std::string st;
+      std::vector<w_char> w;
+      u8_u16(w, word);
+      mkallsmall_utf(w, langnum);
+      mkinitcap_utf(w, langnum);
+      u16_u8(st, w);
+      return add_word(st.c_str(), st.size(), wcl, flags2, flagslen + 1, dp, true);
   }
   return 0;
 }
 
 // detect captype and modify word length for UTF-8 encoding
-int HashMgr::get_clen_and_captype(const char* word, int wbl, int* captype) {
-    w_char dest_utf[BUFSIZE];
-    int len = u8_u16(dest_utf, BUFSIZE, word);
-    *captype = get_captype_utf8(dest_utf, len, langnum);
-    return len;
+int HashMgr::get_clen_and_captype(const std::string& word, int* captype) {
+  int len;
+    std::vector<w_char> dest_utf;
+    len = u8_u16(dest_utf, word);
+    *captype = get_captype_utf8(dest_utf, langnum);
+  return len;
 }
 
 // remove word (personal dictionary function for standalone applications)
@@ -335,7 +363,7 @@ int HashMgr::remove(const char* word) {
       flags[dp->alen] = forbiddenword;
       dp->astr = flags;
       dp->alen++;
-      flag_qsort(flags, 0, dp->alen);
+      std::sort(flags, flags + dp->alen);
     }
     dp = dp->next_homonym;
   }
@@ -343,8 +371,8 @@ int HashMgr::remove(const char* word) {
 }
 
 /* remove forbidden flag to add a personal word to the hash */
-int HashMgr::remove_forbidden_flag(const char* word) {
-  struct hentry* dp = lookup(word);
+int HashMgr::remove_forbidden_flag(const std::string& word) {
+  struct hentry* dp = lookup(word.c_str());
   if (!dp)
     return 1;
   while (dp) {
@@ -371,15 +399,15 @@ int HashMgr::remove_forbidden_flag(const char* word) {
 }
 
 // add a custom dic. word to the hash table (public)
-int HashMgr::add(const char* word) {
+int HashMgr::add(const std::string& word) {
   unsigned short* flags = NULL;
   int al = 0;
   if (remove_forbidden_flag(word)) {
     int captype;
-    int wbl = strlen(word);
-    int wcl = get_clen_and_captype(word, wbl, &captype);
-    add_word(word, wbl, wcl, flags, al, NULL, false);
-    return add_hidden_capitalized_word((char*)word, wbl, wcl, flags, al, NULL,
+    int wbl = word.size();
+    int wcl = get_clen_and_captype(word, &captype);
+    add_word(word.c_str(), wbl, wcl, flags, al, NULL, false);
+    return add_hidden_capitalized_word(word, wcl, flags, al, NULL,
                                        captype);
   }
   return 0;
@@ -392,7 +420,7 @@ int HashMgr::add_with_affix(const char* word, const char* example) {
   if (dp && dp->astr) {
     int captype;
     int wbl = strlen(word);
-    int wcl = get_clen_and_captype(word, wbl, &captype);
+    int wcl = get_clen_and_captype(word, &captype);
     if (aliasf) {
       add_word(word, wbl, wcl, dp->astr, dp->alen, NULL, false);
     } else {
@@ -405,7 +433,7 @@ int HashMgr::add_with_affix(const char* word, const char* example) {
       } else
         return 1;
     }
-    return add_hidden_capitalized_word((char*)word, wbl, wcl, dp->astr,
+    return add_hidden_capitalized_word(word, wcl, dp->astr,
                                        dp->alen, NULL, captype);
   }
   return 1;
@@ -539,7 +567,7 @@ int HashMgr::load_tables(const char* tpath, const char* key) {
           delete dict;
           return 6;
         }
-        flag_qsort(flags, 0, al);
+        std::sort(flags, flags + al);
       }
     } else {
       al = 0;
@@ -549,10 +577,10 @@ int HashMgr::load_tables(const char* tpath, const char* key) {
 
     int captype;
     int wbl = strlen(ts);
-    int wcl = get_clen_and_captype(ts, wbl, &captype);
+    int wcl = get_clen_and_captype(ts, &captype);
     // add the word and its index plus its capitalized form optionally
     if (add_word(ts, wbl, wcl, flags, al, dp, false) ||
-        add_hidden_capitalized_word(ts, wbl, wcl, flags, al, dp, captype)) {
+        add_hidden_capitalized_word(ts, wcl, flags, al, dp, captype)) {
       delete dict;
       return 5;
     }
@@ -639,12 +667,13 @@ int HashMgr::decode_flags(unsigned short** result, char* flags, FileMgr* af) {
       break;
     }
     case FLAG_UNI: {  // UTF-8 characters
-      w_char w[BUFSIZE / 2];
-      len = u8_u16(w, BUFSIZE / 2, flags);
+      std::vector<w_char> w;
+      u8_u16(w, flags);
+      len = w.size();
       *result = (unsigned short*)malloc(len * sizeof(unsigned short));
       if (!*result)
         return -1;
-      memcpy(*result, w, len * sizeof(short));
+      memcpy(*result, &w[0], len * sizeof(short));
       break;
     }
     default: {  // Ispell's one-character flags (erfg -> e r f g)
@@ -677,9 +706,13 @@ unsigned short HashMgr::decode_flag(const char* f) {
                          i, DEFAULTFLAGS - 1);
       s = (unsigned short)i;
       break;
-    case FLAG_UNI:
-      u8_u16((w_char*)&s, 1, f);
+    case FLAG_UNI: {
+      std::vector<w_char> w;
+      u8_u16(w, f);
+      if (!w.empty())
+          memcpy(&s, &w[0], 1 * sizeof(short));
       break;
+    }
     default:
       s = (unsigned short)*((unsigned char*)f);
   }
@@ -689,22 +722,24 @@ unsigned short HashMgr::decode_flag(const char* f) {
 }
 
 char* HashMgr::encode_flag(unsigned short f) {
-  unsigned char ch[10];
   if (f == 0)
     return mystrdup("(NULL)");
+  std::string ch;
   if (flag_mode == FLAG_LONG) {
-    ch[0] = (unsigned char)(f >> 8);
-    ch[1] = (unsigned char)(f - ((f >> 8) << 8));
-    ch[2] = '\0';
+    ch.push_back((unsigned char)(f >> 8));
+    ch.push_back((unsigned char)(f - ((f >> 8) << 8)));
   } else if (flag_mode == FLAG_NUM) {
-    sprintf((char*)ch, "%d", f);
+    std::ostringstream stream;
+    stream << f;
+    ch = stream.str();
   } else if (flag_mode == FLAG_UNI) {
-    u16_u8((char*)&ch, 10, (w_char*)&f, 1);
+    const w_char* w_c = (const w_char*)&f;
+    std::vector<w_char> w(w_c, w_c + 1);
+    u16_u8(ch, w);
   } else {
-    ch[0] = (unsigned char)(f);
-    ch[1] = '\0';
+    ch.push_back((unsigned char)(f));
   }
-  return mystrdup((char*)ch);
+  return mystrdup(ch.c_str());
 }
 
 // read in aff file and set flag mode
@@ -791,8 +826,8 @@ int HashMgr::load_config(const char* affpath, const char* key) {
     /* parse in the ignored characters (for example, Arabic optional diacritics
      * characters */
     if (strncmp(line, "IGNORE", 6) == 0) {
-      if (parse_array(line, &ignorechars, &ignorechars_utf16,
-                      &ignorechars_utf16_len, afflst->getlinenum())) {
+      if (!parse_array(line, &ignorechars, ignorechars_utf16,
+                       afflst->getlinenum())) {
         delete afflst;
         return 1;
       }
@@ -916,7 +951,7 @@ int HashMgr::parse_aliasf(char* line, FileMgr* af) {
           case 1: {
             aliasflen[j] =
                 (unsigned short)decode_flags(&(aliasf[j]), piece, af);
-            flag_qsort(aliasf[j], 0, aliasflen[j]);
+            std::sort(aliasf[j], aliasf[j] + aliasflen[j]);
             break;
           }
           default:
@@ -1035,16 +1070,11 @@ int HashMgr::parse_aliasm(char* line, FileMgr* af) {
               *(tp - 1) = ' ';
               tp = tp + strlen(tp);
             }
+            std::string chunk(piece);
             if (complexprefixes) {
-                reverseword_utf(piece);
+                reverseword_utf(chunk);
             }
-            aliasm[j] = mystrdup(piece);
-            if (!aliasm[j]) {
-              numaliasm = 0;
-              free(aliasm);
-              aliasm = NULL;
-              return 1;
-            }
+            aliasm[j] = mystrdup(chunk.c_str());
             break;
           }
           default:

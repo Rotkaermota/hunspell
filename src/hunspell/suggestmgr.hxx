@@ -74,8 +74,6 @@
 #ifndef _SUGGESTMGR_HXX_
 #define _SUGGESTMGR_HXX_
 
-#define MAXSWL 100
-#define MAXSWUTF8L (MAXSWL * 4)
 #define MAX_ROOTS 100
 #define MAX_WORDS 100
 #define MAX_GUESS 200
@@ -130,7 +128,7 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
   ~SuggestMgr();
 
   int suggest(char*** slst, const char* word, int nsug, int* onlycmpdsug);
-  int ngsuggest(char** wlst, char* word, int ns, HashMgr** pHMgr, int md);
+  int ngsuggest(char** wlst, const char* word, int ns, HashMgr** pHMgr, int md);
   int suggest_auto(char*** slst, const char* word, int nsug);
   int suggest_stems(char*** slst, const char* word, int nsug);
   int suggest_pos_stems(char*** slst, const char* word, int nsug);
@@ -150,6 +148,7 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
   int checkword(const char*, int, int, int*, clock_t*);
   int check_forbidden(const char*, int);
 
+  int capchars(char**, const char*, int, int);
   int replchars(char**, const char*, int, int);
   int doubletwochars(char**, const char*, int, int);
   int forgotchar(char**, const char*, int, int);
@@ -157,6 +156,7 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
   int longswapchar(char**, const char*, int, int);
   int movechar(char**, const char*, int, int);
   int extrachar(char**, const char*, int, int);
+  int badcharkey(char**, const char*, int, int);
   int badchar(char**, const char*, int, int);
   int twowords(char**, const char*, int, int);
   int fixstems(char**, const char*, int);
@@ -173,8 +173,7 @@ class LIBHUNSPELL_DLL_EXPORTED SuggestMgr {
 
   int mapchars(char**, const char*, int, int);
   int map_related(const char*,
-                  char*,
-                  int,
+                  std::string&,
                   int,
                   char** wlst,
                   int,
