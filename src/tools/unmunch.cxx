@@ -44,6 +44,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <string>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -51,6 +52,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <limits>
 
 #include "unmunch.h"
 
@@ -167,7 +169,7 @@ int parse_aff_file(FILE* afflst) {
   char ft;
   struct affent* ptr = NULL;
   struct affent* nptr = NULL;
-  char* line = malloc(MAX_LN_LEN);
+  char* line = (char*)malloc(MAX_LN_LEN);
 
   while (fgets(line, MAX_LN_LEN, afflst)) {
     mychomp(line);
@@ -200,12 +202,12 @@ int parse_aff_file(FILE* afflst) {
             }
             case 3: {
               numents = atoi(piece);
-              if ((numents < 0) ||
-                  ((SIZE_MAX / sizeof(struct affent)) < numents)) {
+              if ((numents <= 0) || ((std::numeric_limits<size_t>::max() /
+                                      sizeof(struct affent)) < static_cast<size_t>(numents))) {
                 fprintf(stderr, "Error: too many entries: %d\n", numents);
                 numents = 0;
               } else {
-                ptr = malloc(numents * sizeof(struct affent));
+                ptr = (struct affent*)malloc(numents * sizeof(struct affent));
                 ptr->achar = achar;
                 ptr->xpflg = ff;
                 fprintf(stderr, "parsing %c entries %d\n", achar, numents);
@@ -401,8 +403,6 @@ void pfx_add(const char* word, int len, struct affent* ep, int num) {
   int cond;
   unsigned char* cp;
   int i;
-  char* pp;
-  char tword[MAX_WD_LEN];
 
   for (aent = ep, i = num; i > 0; aent++, i--) {
     /* now make sure all conditions match */
@@ -415,17 +415,15 @@ void pfx_add(const char* word, int len, struct affent* ep, int num) {
           break;
       }
       if (cond >= aent->numconds) {
+        std::string tword;
         /* we have a match so add prefix */
-        int tlen = 0;
         if (aent->appndl) {
-          strcpy(tword, aent->appnd);
-          tlen += aent->appndl;
+          tword.append(aent->appnd);
         }
-        pp = tword + tlen;
-        strcpy(pp, (word + aent->stripl));
+        tword.append(word + aent->stripl);
 
         if (numwords < MAX_WORDS) {
-          wlist[numwords].word = mystrdup(tword);
+          wlist[numwords].word = mystrdup(tword.c_str());
           wlist[numwords].pallow = 0;
           numwords++;
         }
@@ -440,8 +438,6 @@ void suf_add(const char* word, int len, struct affent* ep, int num) {
   int cond;
   unsigned char* cp;
   int i;
-  char tword[MAX_WD_LEN];
-  char* pp;
 
   for (aent = ep, i = num; i > 0; aent++, i--) {
     /* if conditions hold on root word
@@ -458,19 +454,12 @@ void suf_add(const char* word, int len, struct affent* ep, int num) {
       }
       if (cond < 0) {
         /* we have a matching condition */
-        int tlen = len;
-        strcpy(tword, word);
-        if (aent->stripl) {
-          tlen -= aent->stripl;
-        }
-        pp = (tword + tlen);
-        if (aent->appndl) {
-          strcpy(pp, aent->appnd);
-        } else
-          *pp = '\0';
+        std::string tword(word);
+        tword.resize(len - aent->stripl);
+        tword.append(aent->appnd);
 
         if (numwords < MAX_WORDS) {
-          wlist[numwords].word = mystrdup(tword);
+          wlist[numwords].word = mystrdup(tword.c_str());
           wlist[numwords].pallow = (aent->xpflg & XPRODUCT);
           numwords++;
         }

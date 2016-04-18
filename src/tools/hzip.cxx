@@ -44,6 +44,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 
 #define CODELEN 65536
 #define BUFSIZE 65536
@@ -78,7 +79,7 @@ void code2table(struct item* tree, char** table, char* code, int deep) {
   int first = 0;
   if (!code) {
     first = 1;
-    code = malloc(CODELEN);
+    code = (char*)malloc(CODELEN);
   }
   code[deep] = '1';
   if (tree->left)
@@ -88,7 +89,7 @@ void code2table(struct item* tree, char** table, char* code, int deep) {
     code[deep] = '\0';
     if (tree->type == code_TERM)
       i = CODELEN; /* terminal code */
-    table[i] = malloc(deep + 1);
+    table[i] = (char*)malloc(deep + 1);
     strcpy(table[i], code);
   }
   code[deep] = '0';
@@ -337,24 +338,25 @@ int hzip(const char* filename, char* key) {
   struct item** list;
   char* table[CODELEN + 1];
   int n;
-  char out[BUFSIZE];
-  FILE *f, *f2, *tempfile;
   unsigned short termword;
-  strcpy(out, filename);
-  strcat(out, EXTENSION);
-  f = fopen(filename, "r");
+
+  FILE* f = fopen(filename, "r");
   if (!f)
     return fail("hzip: %s: Permission denied\n", filename);
-  tempfile = tmpfile();
+
+  FILE *tempfile = tmpfile();
   if (!tempfile) {
     fclose(f);
     return fail("hzip: cannot create temporary file\n", NULL);
   }
-  f2 = fopen(out, "wb");
+
+  std::string out(filename);
+  out.append(EXTENSION);
+  FILE* f2 = fopen(out.c_str(), "wb");
   if (!f2) {
     fclose(tempfile);
     fclose(f);
-    return fail("hzip: %s: Permission denied\n", out);
+    return fail("hzip: %s: Permission denied\n", out.c_str());
   }
   for (n = 0; n < CODELEN; n++)
     table[n] = NULL;

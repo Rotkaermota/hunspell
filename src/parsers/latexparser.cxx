@@ -67,6 +67,7 @@ static struct {
                {{"\\label", NULL}, 1},
                {{"\\ref", NULL}, 1},
                {{"\\pageref", NULL}, 1},
+               {{"\\autoref", NULL}, 1},
                {{"\\parbox", NULL}, 1},
                {{"\\begin{verbatim}", "\\end{verbatim}"}, 0},
                {{"\\verb+", "+"}, 0},
@@ -132,7 +133,7 @@ LaTeXParser::LaTeXParser(const char* wordchars)
   init(wordchars);
 }
 
-LaTeXParser::LaTeXParser(unsigned short* wordchars, int len)
+LaTeXParser::LaTeXParser(const w_char* wordchars, int len)
     : pattern_num(0), depth(0), arg(0), opt(0) {
   init(wordchars, len);
 }

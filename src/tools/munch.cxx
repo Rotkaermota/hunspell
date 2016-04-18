@@ -42,6 +42,7 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <string>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -49,7 +50,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <limits.h>
+#include <limits>
 
 #include "munch.h"
 
@@ -255,7 +256,7 @@ int parse_aff_file(FILE* afflst) {
   char ft;
   struct affent* ptr = NULL;
   struct affent* nptr = NULL;
-  char* line = malloc(MAX_LN_LEN);
+  char* line = (char*)malloc(MAX_LN_LEN);
 
   while (fgets(line, MAX_LN_LEN, afflst)) {
     mychomp(line);
@@ -286,12 +287,12 @@ int parse_aff_file(FILE* afflst) {
             }
             case 3: {
               numents = atoi(piece);
-              if ((numents < 0) ||
-                  ((SIZE_MAX / sizeof(struct affent)) < numents)) {
+              if ((numents <= 0) || ((std::numeric_limits<size_t>::max() /
+                                      sizeof(struct affent)) < static_cast<size_t>(numents))) {
                 fprintf(stderr, "Error: too many entries: %d\n", numents);
                 numents = 0;
               } else {
-                ptr = malloc(numents * sizeof(struct affent));
+                ptr = (struct affent*)malloc(numents * sizeof(struct affent));
                 ptr->achar = achar;
                 ptr->xpflg = ff;
                 fprintf(stderr, "parsing %c entries %d\n", achar, numents);
@@ -472,9 +473,7 @@ void pfx_chk(const char* word, int len, struct affent* ep, int num) {
   struct affent* aent;
   int cond;
   struct hentry* hent;
-  unsigned char* cp;
   int i;
-  char tword[MAX_WD_LEN];
 
   for (aent = ep, i = num; i > 0; aent++, i--) {
     int tlen = len - aent->appndl;
@@ -482,19 +481,18 @@ void pfx_chk(const char* word, int len, struct affent* ep, int num) {
     if (tlen > 0 &&
         (aent->appndl == 0 || strncmp(aent->appnd, word, aent->appndl) == 0) &&
         tlen + aent->stripl >= aent->numconds) {
-      if (aent->stripl)
-        strcpy(tword, aent->strip);
-      strcpy((tword + aent->stripl), (word + aent->appndl));
+      std::string tword(aent->strip);
+      tword.append(word + aent->appndl);
 
       /* now go through the conds and make sure they all match */
-      cp = (unsigned char*)tword;
+      unsigned char* cp = (unsigned char*)tword.c_str();
       for (cond = 0; cond < aent->numconds; cond++) {
         if ((aent->conds[*cp++] & (1 << cond)) == 0)
           break;
       }
 
       if (cond >= aent->numconds) {
-        if ((hent = lookup(tword)) != NULL) {
+        if ((hent = lookup(tword.c_str())) != NULL) {
           if (numroots < MAX_ROOTS) {
             roots[numroots].hashent = hent;
             roots[numroots].prefix = aent;
@@ -514,36 +512,29 @@ void suf_chk(const char* word,
              struct affent* pfxent,
              int cpflag) {
   struct affent* aent;
-  int tlen;
   int cond;
   struct hentry* hent;
-  unsigned char* cp;
   int i;
-  char tword[MAX_WD_LEN];
 
   for (aent = ep, i = num; i > 0; aent++, i--) {
     if ((cpflag & XPRODUCT) != 0 && (aent->xpflg & XPRODUCT) == 0)
       continue;
 
-    tlen = len - aent->appndl;
+    int tlen = len - aent->appndl;
     if (tlen > 0 &&
         (aent->appndl == 0 || strcmp(aent->appnd, (word + tlen)) == 0) &&
         tlen + aent->stripl >= aent->numconds) {
-      strcpy(tword, word);
-      cp = (unsigned char*)(tword + tlen);
-      if (aent->stripl) {
-        strcpy((char*)cp, aent->strip);
-        tlen += aent->stripl;
-        cp = (unsigned char*)(tword + tlen);
-      } else
-        *cp = '\0';
+      std::string tword(word);
+      tword.resize(tlen);
+      tword.append(aent->strip);
+      unsigned char* cp = (unsigned char*)(tword.c_str() + tword.size());
 
       for (cond = aent->numconds; --cond >= 0;) {
         if ((aent->conds[*--cp] & (1 << cond)) == 0)
           break;
       }
       if (cond < 0) {
-        if ((hent = lookup(tword)) != NULL) {
+        if ((hent = lookup(tword.c_str())) != NULL) {
           if (numroots < MAX_ROOTS) {
             roots[numroots].hashent = hent;
             roots[numroots].prefix = pfxent;
@@ -644,7 +635,7 @@ int load_tables(FILE* wdlst) {
   tablesize = atoi(ts);
 
   if (tablesize <= 0 ||
-      (tablesize >= (INT_MAX - 1 - nExtra) / (int)sizeof(struct hentry*))) {
+      (tablesize >= (std::numeric_limits<int>::max() - 1 - nExtra) / (int)sizeof(struct hentry*))) {
     return 3;
   }
 
@@ -699,7 +690,7 @@ void add_affix_char(struct hentry* ep, char ac) {
   for (i = 0; i < al; i++)
     if (ac == (ep->affstr)[i])
       return;
-  tmp = calloc(al + 2, 1);
+  tmp = (char*)calloc(al + 2, 1);
   memcpy(tmp, ep->affstr, (al + 1));
   *(tmp + al) = ac;
   *(tmp + al + 1) = '\0';

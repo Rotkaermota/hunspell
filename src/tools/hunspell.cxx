@@ -46,6 +46,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sstream>
 #include <string>
 #include <string.h>
 #include "config.h"
@@ -197,8 +198,8 @@ struct wordlist {
 char* wordchars = NULL;
 char* dicpath = NULL;
 int wordchars_len;
-unsigned short* wordchars_utf16 = NULL;
-int wordchars_utf16_free = 0;
+const w_char* wordchars_utf16 = NULL;
+std::vector<w_char> new_wordchars_utf16;
 int wordchars_utf16_len;
 char* dicname = NULL;
 char* privdicname = NULL;
@@ -331,9 +332,11 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
   }
 
   if (io_utf8) {
-    wordchars_utf16 = pMS->get_wordchars_utf16(&wordchars_utf16_len);
+    const std::vector<w_char>& vec_wordchars_utf16 = pMS->get_wordchars_utf16();
+    wordchars_utf16 = &vec_wordchars_utf16[0];
+    wordchars_utf16_len = vec_wordchars_utf16.size();
     if ((strcmp(denc, "UTF-8") != 0) && pMS->get_wordchars()) {
-      char* wchars = (char*)pMS->get_wordchars();
+      const char* wchars = pMS->get_wordchars();
       int wlen = strlen(wchars);
       size_t c1 = wlen;
       size_t c2 = MAXLNLEN;
@@ -346,13 +349,10 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
       } else {
         iconv(conv, (ICONV_CONST char**)&wchars, &c1, &dest, &c2);
         iconv_close(conv);
-        wordchars_utf16 =
-            (unsigned short*)malloc(sizeof(unsigned short) * wlen);
-        int n = u8_u16((w_char*)wordchars_utf16, wlen, text_conv);
-        if (n > 0)
-          flag_qsort(wordchars_utf16, 0, n);
-        wordchars_utf16_len = n;
-        wordchars_utf16_free = 1;
+        u8_u16(new_wordchars_utf16, text_conv);
+        std::sort(new_wordchars_utf16.begin(), new_wordchars_utf16.end());
+        wordchars_utf16 = &new_wordchars_utf16[0];
+        wordchars_utf16_len = new_wordchars_utf16.size();
       }
     }
   } else {
@@ -377,12 +377,9 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
         ch[1] = '\0';
         size_t res = iconv(conv, (ICONV_CONST char**)&ch8bit, &c1, &dest, &c2);
         if (res != (size_t)-1) {
-          unsigned short idx;
-          w_char w;
-          w.l = 0;
-          w.h = 0;
-          u8_u16(&w, 1, u8);
-          idx = (w.h << 8) + w.l;
+          std::vector<w_char> w;
+          u8_u16(w, std::string(u8, dest));
+          unsigned short idx = w.empty() ? 0 : (w[0].h << 8) + w[0].l;
           if (unicodeisalpha(idx)) {
             *pletters = (char)i;
             pletters++;
@@ -395,10 +392,10 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
 
     // UTF-8 wordchars -> 8 bit wordchars
     int len = 0;
-    char* wchars = (char*)pMS->get_wordchars();
+    const char* wchars = pMS->get_wordchars();
     if (wchars) {
       if ((strcmp(denc, "UTF-8") == 0)) {
-        pMS->get_wordchars_utf16(&len);
+        len = pMS->get_wordchars_utf16().size();
       } else {
         len = strlen(wchars);
       }
@@ -421,7 +418,9 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
   }
 #else
   if (strcmp(denc, "UTF-8") == 0) {
-    wordchars_utf16 = pMS->get_wordchars_utf16(&wordchars_utf16_len);
+    const std::vector<w_char>& vec_wordchars_utf16 = pMS->get_wordchars_utf16();
+    wordchars_utf16 = &vec_wordchars_utf16[0];
+    wordchars_utf16_len = vec_wordchars_utf16.size();
     io_utf8 = 1;
   } else {
     char* casechars = get_casechars(denc);
@@ -573,8 +572,7 @@ void load_privdic(const char* filename, Hunspell* pMS) {
   FILE* dic = fopen(filename, "r");
   if (dic) {
     while (fgets(buf, MAXLNLEN, dic)) {
-      if (*(buf + strlen(buf) - 1) == '\n')
-        *(buf + strlen(buf) - 1) = '\0';
+      buf[strcspn(buf, "\n")] = 0;
       putdic(buf, pMS);
     }
     fclose(dic);
@@ -698,7 +696,7 @@ void pipe_interface(Hunspell** pMS, int format, FILE* fileid, char* filename) {
   int terse_mode = 0;
   int verbose_mode = 0;
   int d = 0;
-  char* odftmpdir;
+  char* odftmpdir = NULL;
 
   char* extension = (filename) ? basename(filename, '.') : NULL;
   TextParser* parser = get_parser(format, extension, pMS[0]);
@@ -710,20 +708,20 @@ void pipe_interface(Hunspell** pMS, int format, FILE* fileid, char* filename) {
     odftmpdir = tmpnam(NULL);
     // break 1-line XML of zipped ODT documents at </style:style> and </text:p>
     // to avoid tokenization problems (fgets could stop within an XML tag)
-    sprintf(buf,
-            "mkdir %s && unzip -p '%s' content.xml | sed "
+    std::ostringstream sbuf;
+    sbuf << "mkdir " << odftmpdir << " && unzip -p '" << filename << "' content.xml | sed "
             "'s/\\(<\\/text:p>\\|<\\/style:style>\\)\\(.\\)/\\1\\\n\\2/g' "
-            ">%s/content.xml",
-            odftmpdir, filename, odftmpdir);
-    if (!secure_filename(filename) || system(buf) != 0) {
+            ">" << odftmpdir << "/content.xml";
+    if (!secure_filename(filename) || system(sbuf.str().c_str()) != 0) {
       if (secure_filename(filename))
         perror(gettext("Can't open inputfile"));
       else
         fprintf(stderr, gettext("Can't open %s.\n"), filename);
       exit(1);
     }
-    sprintf(buf, "%s/content.xml", odftmpdir);
-    fileid = fopen(buf, "r");
+    std::string file(odftmpdir);
+    file.append("/content.xml");
+    fileid = fopen(file.c_str(), "r");
     if (fileid == NULL) {
       perror(gettext("Can't open inputfile"));
       exit(1);
@@ -741,8 +739,7 @@ void pipe_interface(Hunspell** pMS, int format, FILE* fileid, char* filename) {
 
 nextline:
   while (fgets(buf, MAXLNLEN, fileid)) {
-    if (*(buf + strlen(buf) - 1) == '\n')
-      *(buf + strlen(buf) - 1) = '\0';
+    buf[strcspn(buf, "\n")] = 0;
     lineno++;
 #ifdef LOG
     log(buf);
@@ -1069,8 +1066,9 @@ nextline:
 
   if (bZippedOdf) {
     fclose(fileid);
-    sprintf(buf, "rm %s/content.xml; rmdir %s", odftmpdir, odftmpdir);
-    if (system(buf) != 0)
+    std::ostringstream sbuf;
+    sbuf << "rm " << odftmpdir << "/content.xml; rmdir " << odftmpdir;
+    if (system(sbuf.str().c_str()) != 0)
       perror("write failed");
   }
 
@@ -1250,24 +1248,21 @@ void dialogscreen(TextParser* parser,
                                      "S)tem Q)uit e(X)it or ? for help\n"));
 }
 
-char* lower_first_char(char* token, const char* io_enc, int langnum) {
-  const char* utf8str = chenc(token, io_enc, "UTF-8");
-  int max = strlen(utf8str);
-  w_char* u = new w_char[max];
-  int len = u8_u16(u, max, utf8str);
-  unsigned short idx = (u[0].h << 8) + u[0].l;
-  idx = unicodetolower(idx, langnum);
-  u[0].h = (unsigned char)(idx >> 8);
-  u[0].l = (unsigned char)(idx & 0x00FF);
-  char* scratch = (char*)malloc(max + 1 + 4);
-  u16_u8(scratch, max + 4, u, len);
-  delete[] u;
-  char* result = chenc(scratch, "UTF-8", io_enc);
-  if (result != scratch) {
-    free(scratch);
-    result = mystrdup(result);
+char* lower_first_char(const std::string& token, const char* io_enc, int langnum) {
+  std::string utf8str(token);
+  chenc(utf8str, io_enc, "UTF-8");
+  std::vector<w_char> u;
+  u8_u16(u, utf8str);
+  if (!u.empty()) {
+    unsigned short idx = (u[0].h << 8) + u[0].l;
+    idx = unicodetolower(idx, langnum);
+    u[0].h = (unsigned char)(idx >> 8);
+    u[0].l = (unsigned char)(idx & 0x00FF);
   }
-  return result;
+  std::string scratch;
+  u16_u8(scratch, u);
+  chenc(scratch, "UTF-8", io_enc);
+  return mystrdup(scratch.c_str());
 }
 
 // for terminal interface
@@ -1460,22 +1455,6 @@ int dialog(TextParser* parser,
           temp = basename(w, '-');
           if (w < temp) {
             *(temp - 1) = '\0';
-          } else {
-#ifdef HUNSPELL_EXPERIMENTAL
-            char** poslst = NULL;
-            int ps = pMS->suggest_pos_stems(&poslst, token);
-            if (ps > 0) {
-              strcpy(buf, poslst[0]);
-              for (int i = 0; i < ps; i++) {
-                if (strlen(poslst[i]) <= strlen(buf))
-                  strcpy(buf, poslst[i]);
-                free(poslst[i]);
-              }
-              strcpy(w, buf);
-            }
-            if (poslst)
-              free(poslst);
-#endif
           }
 
 #ifdef HAVE_READLINE
@@ -1670,8 +1649,8 @@ ki2:
 void interactive_interface(Hunspell** pMS, char* filename, int format) {
   char buf[MAXLNLEN];
   char* odffilename = NULL;
-  char* odftempdir;  // external zip works only with temporary directories
-                     // (option -j)
+  char* odftempdir = NULL;  // external zip works only with temporary directories
+                            // (option -j)
 
   FILE* text = fopen(filename, "r");
   if (!text) {
@@ -1693,12 +1672,11 @@ void interactive_interface(Hunspell** pMS, char* filename, int format) {
     fclose(text);
     // break 1-line XML of zipped ODT documents at </style:style> and </text:p>
     // to avoid tokenization problems (fgets could stop within an XML tag)
-    sprintf(buf,
-            "mkdir %s && unzip -p '%s' content.xml | sed "
+    std::ostringstream sbuf;
+    sbuf << "mkdir " << odftempdir << " && unzip -p '" << filename << "' content.xml | sed "
             "'s/\\(<\\/text:p>\\|<\\/style:style>\\)\\(.\\)/\\1\\\n\\2/g' "
-            ">%s/content.xml",
-            odftempdir, filename, odftempdir);
-    if (!secure_filename(filename) || system(buf) != 0) {
+            ">" << odftempdir << "/content.xml";
+    if (!secure_filename(filename) || system(sbuf.str().c_str()) != 0) {
       if (secure_filename(filename))
         perror(gettext("Can't open inputfile"));
       else
@@ -1707,8 +1685,9 @@ void interactive_interface(Hunspell** pMS, char* filename, int format) {
       exit(1);
     }
     odffilename = filename;
-    sprintf(buf, "%s/content.xml", odftempdir);
-    filename = mystrdup(buf);
+    std::string file(odftempdir);
+    file.append("/content.xml");
+    filename = mystrdup(file.c_str());
     text = fopen(filename, "r");
     if (!text) {
       perror(gettext("Can't open inputfile"));
@@ -1738,8 +1717,9 @@ void interactive_interface(Hunspell** pMS, char* filename, int format) {
           refresh();
           fclose(tempfile);  // automatically deleted when closed
           if (bZippedOdf) {
-            sprintf(buf, "rm %s; rmdir %s", filename, odftempdir);
-            if (system(buf) != 0)
+            std::ostringstream sbuf;
+            sbuf << "rm " << filename << "; rmdir " << odftempdir;
+            if (system(sbuf.str().c_str()) != 0)
               perror("write failed");
             free(filename);
           }
@@ -1768,17 +1748,19 @@ void interactive_interface(Hunspell** pMS, char* filename, int format) {
           perror("write failed");
       }
       fclose(text);
-      if (bZippedOdf) {
-        sprintf(buf, "zip -j '%s' %s", odffilename, filename);
-        if (system(buf) != 0)
+      if (bZippedOdf && odffilename) {
+        std::ostringstream sbuf;
+        sbuf << "zip -j '" << odffilename << "' " << filename;
+        if (system(sbuf.str().c_str()) != 0)
           perror("write failed");
       }
     }
   }
 
   if (bZippedOdf) {
-    sprintf(buf, "rm %s; rmdir %s", filename, odftempdir);
-    if (system(buf) != 0)
+    std::ostringstream sbuf;
+    sbuf << "rm " << filename << "; rmdir " << odftempdir;
+    if (system(sbuf.str().c_str()) != 0)
       perror("write failed");
     free(filename);
   }
@@ -2186,27 +2168,26 @@ int main(int argc, char** argv) {
     pMS[0] = new Hunspell(aff, dic, key);
     dic_enc[0] = pMS[0]->get_dic_encoding();
     dmax = 1;
-    if (pMS[0] && dicplus)
-      while (dicplus) {
-        char* dicname2 = dicplus + 1;
-        dicplus = strchr(dicname2, ',');
-        if (dicplus)
-          *dicplus = '\0';
-        free(aff);
-        free(dic);
-        aff = search(path, dicname2, ".aff");
-        dic = search(path, dicname2, ".dic");
-        if (aff && dic) {
-          if (dmax < DMAX) {
-            pMS[dmax] = new Hunspell(aff, dic, key);
-            dic_enc[dmax] = pMS[dmax]->get_dic_encoding();
-            dmax++;
-          } else
-            fprintf(stderr, gettext("error - %s exceeds dictionary limit.\n"),
-                    dicname2);
-        } else if (dic)
-          pMS[dmax - 1]->add_dic(dic);
-      }
+    while (dicplus) {
+      char* dicname2 = dicplus + 1;
+      dicplus = strchr(dicname2, ',');
+      if (dicplus)
+        *dicplus = '\0';
+      free(aff);
+      free(dic);
+      aff = search(path, dicname2, ".aff");
+      dic = search(path, dicname2, ".dic");
+      if (aff && dic) {
+        if (dmax < DMAX) {
+          pMS[dmax] = new Hunspell(aff, dic, key);
+          dic_enc[dmax] = pMS[dmax]->get_dic_encoding();
+          dmax++;
+        } else
+          fprintf(stderr, gettext("error - %s exceeds dictionary limit.\n"),
+                  dicname2);
+      } else if (dic)
+        pMS[dmax - 1]->add_dic(dic);
+    }
   } else {
     fprintf(stderr, gettext("Can't open affix or dictionary files for "
                             "dictionary named \"%s\".\n"),
@@ -2307,8 +2288,6 @@ int main(int argc, char** argv) {
     free(dic);
   if (wordchars)
     free(wordchars);
-  if (wordchars_utf16_free)
-    free(wordchars_utf16);
 #ifdef HAVE_ICONV
   free_utf_tbl();
 #endif
