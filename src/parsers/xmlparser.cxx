@@ -58,9 +58,9 @@ static const char* __PATTERN__[][2] = {{"<!--", "-->"},
 
 #define __PATTERN_LEN__ (sizeof(__PATTERN__) / (sizeof(char*) * 2))
 
-static const char* __PATTERN2__[][2] = {};
+static const char* (*__PATTERN2__)[2] = NULL;
 
-#define __PATTERN_LEN2__ (sizeof(__PATTERN2__) / (sizeof(char*) * 2))
+#define __PATTERN_LEN2__ 0
 
 #define ENTITY_APOS "&apos;"
 #define UTF8_APOS "\xe2\x80\x99"
@@ -87,7 +87,7 @@ XMLParser::~XMLParser() {}
 
 int XMLParser::look_pattern(const char* p[][2], unsigned int len, int column) {
   for (unsigned int i = 0; i < len; i++) {
-    char* j = line[actual] + head;
+    const char* j = line[actual].c_str() + head;
     const char* k = p[i][column];
     while ((*k != '\0') && (tolower(*j) == *k)) {
       j++;
@@ -104,10 +104,12 @@ int XMLParser::look_pattern(const char* p[][2], unsigned int len, int column) {
  *
  */
 
-char* XMLParser::next_token(const char* PATTERN[][2],
-                            unsigned int PATTERN_LEN,
-                            const char* PATTERN2[][2],
-                            unsigned int PATTERN_LEN2) {
+bool XMLParser::next_token(const char* PATTERN[][2],
+                           unsigned int PATTERN_LEN,
+                           const char* PATTERN2[][2],
+                           unsigned int PATTERN_LEN2,
+                           std::string& t) {
+  t.clear();
   const char* latin1;
 
   for (;;) {
@@ -120,10 +122,10 @@ char* XMLParser::next_token(const char* PATTERN[][2],
             checkattr = 1;
           }
           state = ST_TAG;
-        } else if (is_wordchar(line[actual] + head)) {
+        } else if (is_wordchar(line[actual].c_str() + head)) {
           state = ST_WORD;
           token = head;
-        } else if ((latin1 = get_latin1(line[actual] + head))) {
+        } else if ((latin1 = get_latin1(line[actual].c_str() + head))) {
           state = ST_WORD;
           token = head;
           head += strlen(latin1);
@@ -132,27 +134,26 @@ char* XMLParser::next_token(const char* PATTERN[][2],
         }
         break;
       case ST_WORD:  // wordchar
-        if ((latin1 = get_latin1(line[actual] + head))) {
+        if ((latin1 = get_latin1(line[actual].c_str() + head))) {
           head += strlen(latin1);
         } else if ((is_wordchar((char*)APOSTROPHE) ||
                     (is_utf8() && is_wordchar((char*)UTF8_APOS))) &&
-                   strncmp(line[actual] + head, ENTITY_APOS,
+                   strncmp(line[actual].c_str() + head, ENTITY_APOS,
                            strlen(ENTITY_APOS)) == 0 &&
-                   is_wordchar(line[actual] + head + strlen(ENTITY_APOS))) {
+                   is_wordchar(line[actual].c_str() + head + strlen(ENTITY_APOS))) {
           head += strlen(ENTITY_APOS) - 1;
         } else if (is_utf8() &&
                    is_wordchar((char*)APOSTROPHE) &&  // add Unicode apostrophe
                                                       // to the WORDCHARS, if
                                                       // needed
-                   strncmp(line[actual] + head, UTF8_APOS, strlen(UTF8_APOS)) ==
+                   strncmp(line[actual].c_str() + head, UTF8_APOS, strlen(UTF8_APOS)) ==
                        0 &&
-                   is_wordchar(line[actual] + head + strlen(UTF8_APOS))) {
+                   is_wordchar(line[actual].c_str() + head + strlen(UTF8_APOS))) {
           head += strlen(UTF8_APOS) - 1;
-        } else if (!is_wordchar(line[actual] + head)) {
+        } else if (!is_wordchar(line[actual].c_str() + head)) {
           state = prevstate;
-          char* t = alloc_token(token, &head);
-          if (t)
-            return t;
+          if (alloc_token(token, &head, t))
+            return true;
         }
         break;
       case ST_TAG:  // comment, labels, etc
@@ -181,7 +182,7 @@ char* XMLParser::next_token(const char* PATTERN[][2],
           if (checkattr == 2)
             checkattr = 1;
           // for IMG ALT
-        } else if (is_wordchar(line[actual] + head) && (checkattr == 2)) {
+        } else if (is_wordchar(line[actual].c_str() + head) && (checkattr == 2)) {
           state = ST_WORD;
           token = head;
         } else if (line[actual][head] == '&') {
@@ -194,14 +195,14 @@ char* XMLParser::next_token(const char* PATTERN[][2],
           head--;
         }
     }
-    if (next_char(line[actual], &head))
-      return NULL;
+    if (next_char(line[actual].c_str(), &head))
+      return false;
   }
 }
 
-char* XMLParser::next_token() {
+bool XMLParser::next_token(std::string& t) {
   return next_token(__PATTERN__, __PATTERN_LEN__, __PATTERN2__,
-                    __PATTERN_LEN2__);
+                    __PATTERN_LEN2__, t);
 }
 
 int XMLParser::change_token(const char* word) {

@@ -142,7 +142,7 @@ LaTeXParser::~LaTeXParser() {}
 
 int LaTeXParser::look_pattern(int col) {
   for (unsigned int i = 0; i < PATTERN_LEN; i++) {
-    char* j = line[actual] + head;
+    const char* j = line[actual].c_str() + head;
     const char* k = PATTERN[i].pat[col];
     if (!k)
       continue;
@@ -168,7 +168,8 @@ int LaTeXParser::look_pattern(int col) {
  *
  */
 
-char* LaTeXParser::next_token() {
+bool LaTeXParser::next_token(std::string& t) {
+  t.clear();
   int i;
   int slash = 0;
   int apostrophe;
@@ -190,7 +191,7 @@ char* LaTeXParser::next_token() {
           head += strlen(PATTERN[pattern_num].pat[0]) - 1;
         } else if (line[actual][head] == '%') {
           state = 5;
-        } else if (is_wordchar(line[actual] + head)) {
+        } else if (is_wordchar(line[actual].c_str() + head)) {
           state = 1;
           token = head;
         } else if (line[actual][head] == '\\') {
@@ -208,15 +209,15 @@ char* LaTeXParser::next_token() {
         break;
       case 1:  // wordchar
         apostrophe = 0;
-        if (!is_wordchar(line[actual] + head) ||
+        if (!is_wordchar(line[actual].c_str() + head) ||
             (line[actual][head] == '\'' && line[actual][head + 1] == '\'' &&
              ++apostrophe)) {
           state = 0;
-          char* t = alloc_token(token, &head);
+          bool ok = alloc_token(token, &head, t);
           if (apostrophe)
             head += 2;
-          if (t)
-            return t;
+          if (ok)
+            return true;
         }
         break;
       case 2:  // comment, labels, etc
@@ -257,10 +258,10 @@ char* LaTeXParser::next_token() {
         } else if (line[actual][head] == ']')
           depth--;
     }  // case
-    if (next_char(line[actual], &head)) {
+    if (next_char(line[actual].c_str(), &head)) {
       if (state == 5)
         state = 0;
-      return NULL;
+      return false;
     }
   }
 }

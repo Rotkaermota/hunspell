@@ -125,7 +125,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS)
 am_analyze_OBJECTS = analyze.$(OBJEXT)
 analyze_OBJECTS = $(am_analyze_OBJECTS)
-analyze_DEPENDENCIES = ../hunspell/libhunspell-1.4.la
+analyze_DEPENDENCIES = ../hunspell/libhunspell-1.5.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -133,17 +133,17 @@ am__v_lt_1 =
 am_chmorph_OBJECTS = chmorph.$(OBJEXT)
 chmorph_OBJECTS = $(am_chmorph_OBJECTS)
 chmorph_DEPENDENCIES = ../parsers/libparsers.a \
-	../hunspell/libhunspell-1.4.la
+	../hunspell/libhunspell-1.5.la
 am_example_OBJECTS = example.$(OBJEXT)
 example_OBJECTS = $(am_example_OBJECTS)
-example_DEPENDENCIES = ../hunspell/libhunspell-1.4.la
+example_DEPENDENCIES = ../hunspell/libhunspell-1.5.la
 am_hunspell_OBJECTS = hunspell.$(OBJEXT)
 hunspell_OBJECTS = $(am_hunspell_OBJECTS)
 hunspell_DEPENDENCIES = ../parsers/libparsers.a \
-	../hunspell/libhunspell-1.4.la
+	../hunspell/libhunspell-1.5.la
 am_hunzip_OBJECTS = hunzip.$(OBJEXT)
 hunzip_OBJECTS = $(am_hunzip_OBJECTS)
-hunzip_DEPENDENCIES = ../hunspell/libhunspell-1.4.la
+hunzip_DEPENDENCIES = ../hunspell/libhunspell-1.5.la
 am_hzip_OBJECTS = hzip.$(OBJEXT)
 hzip_OBJECTS = $(am_hzip_OBJECTS)
 hzip_LDADD = $(LDADD)
@@ -348,6 +348,7 @@ LTLIBOBJS = @LTLIBOBJS@
 LTLIBPTH = @LTLIBPTH@
 LTLIBTHREAD = @LTLIBTHREAD@
 MAKEINFO = @MAKEINFO@
+MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
@@ -388,6 +389,7 @@ abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
+ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
@@ -421,7 +423,6 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
-lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -441,22 +442,22 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-INCLUDES = -I${top_srcdir}/src/hunspell -I${top_srcdir}/src/parsers
+INCLUDES = -I${top_builddir}/src/hunspell -I${top_srcdir}/src/hunspell -I${top_srcdir}/src/parsers
 hzip_SOURCES = hzip.cxx
 hunzip_SOURCES = hunzip.cxx
-hunzip_LDADD = ../hunspell/libhunspell-1.4.la
+hunzip_LDADD = ../hunspell/libhunspell-1.5.la
 munch_SOURCES = munch.cxx munch.h
 unmunch_SOURCES = unmunch.cxx unmunch.h
 example_SOURCES = example.cxx
-example_LDADD = ../hunspell/libhunspell-1.4.la
+example_LDADD = ../hunspell/libhunspell-1.5.la
 hunspell_SOURCES = hunspell.cxx
 hunspell_LDADD = @LIBINTL@ @LIBICONV@ ../parsers/libparsers.a \
-	../hunspell/libhunspell-1.4.la @CURSESLIB@ @READLINELIB@
+	../hunspell/libhunspell-1.5.la @CURSESLIB@ @READLINELIB@
 
 analyze_SOURCES = analyze.cxx
-analyze_LDADD = ../hunspell/libhunspell-1.4.la
+analyze_LDADD = ../hunspell/libhunspell-1.5.la
 chmorph_SOURCES = chmorph.cxx
-chmorph_LDADD = ../parsers/libparsers.a ../hunspell/libhunspell-1.4.la
+chmorph_LDADD = ../parsers/libparsers.a ../hunspell/libhunspell-1.5.la
 dist_bin_SCRIPTS = makealias affixcompress wordforms ispellaff2myspell wordlist2hunspell
 all: all-am
 

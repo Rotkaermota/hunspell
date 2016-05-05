@@ -136,7 +136,7 @@ am_testparser_OBJECTS = firstparser.$(OBJEXT) xmlparser.$(OBJEXT) \
 	textparser.$(OBJEXT) htmlparser.$(OBJEXT) odfparser.$(OBJEXT)
 testparser_OBJECTS = $(am_testparser_OBJECTS)
 testparser_LDADD = $(LDADD)
-testparser_DEPENDENCIES = ../hunspell/libhunspell-1.4.la
+testparser_DEPENDENCIES = ../hunspell/libhunspell-1.5.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -304,6 +304,7 @@ LTLIBOBJS = @LTLIBOBJS@
 LTLIBPTH = @LTLIBPTH@
 LTLIBTHREAD = @LTLIBTHREAD@
 MAKEINFO = @MAKEINFO@
+MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
 MSGFMT = @MSGFMT@
 MSGFMT_015 = @MSGFMT_015@
@@ -344,6 +345,7 @@ abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
+ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_DUMPBIN = @ac_ct_DUMPBIN@
@@ -377,7 +379,6 @@ libdir = @libdir@
 libexecdir = @libexecdir@
 localedir = @localedir@
 localstatedir = @localstatedir@
-lt_ECHO = @lt_ECHO@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
@@ -397,6 +398,7 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+INCLUDES = -I${top_builddir}/src/hunspell
 noinst_LIBRARIES = libparsers.a
 libparsers_a_SOURCES = firstparser.cxx xmlparser.cxx \
 		      latexparser.cxx  manparser.cxx \
@@ -411,7 +413,7 @@ testparser_SOURCES = firstparser.cxx firstparser.hxx xmlparser.cxx \
 
 
 # need mystrdup()
-LDADD = ../hunspell/libhunspell-1.4.la
+LDADD = ../hunspell/libhunspell-1.5.la
 all: all-am
 
 .SUFFIXES:

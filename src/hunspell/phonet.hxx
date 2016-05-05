@@ -37,8 +37,7 @@
 #include "hunvisapi.h"
 
 struct phonetable {
-  int num;
-  char** rules;
+  std::vector<std::string> rules;
   int hash[HASHSIZE];
 };
 

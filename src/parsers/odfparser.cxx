@@ -60,9 +60,9 @@ static const char* PATTERN[][2] = {
 
 #define PATTERN_LEN (sizeof(PATTERN) / (sizeof(char*) * 2))
 
-static const char* PATTERN2[][2] = {};
+static const char* (*PATTERN2)[2] = NULL;
 
-#define PATTERN_LEN2 (sizeof(PATTERN2) / (sizeof(char*) * 2))
+#define PATTERN_LEN2 0
 
 ODFParser::ODFParser(const char* wordchars) {
   init(wordchars);
@@ -72,8 +72,8 @@ ODFParser::ODFParser(const w_char* wordchars, int len) {
   init(wordchars, len);
 }
 
-char* ODFParser::next_token() {
-  return XMLParser::next_token(PATTERN, PATTERN_LEN, PATTERN2, PATTERN_LEN2);
+bool ODFParser::next_token(std::string& t) {
+  return XMLParser::next_token(PATTERN, PATTERN_LEN, PATTERN2, PATTERN_LEN2, t);
 }
 
 ODFParser::~ODFParser() {}

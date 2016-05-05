@@ -58,6 +58,8 @@
 
 #include "../hunspell/w_char.hxx"
 
+#include <vector>
+
 /*
  * Base Text Parser
  *
@@ -65,16 +67,16 @@
 
 class TextParser {
  protected:
-  int wordcharacters[256];           // for detection of the word boundaries
-  char line[MAXPREVLINE][MAXLNLEN];  // parsed and previous lines
-  char urlline[MAXLNLEN];            // mask for url detection
+  int wordcharacters[256];        // for detection of the word boundaries
+  std::string line[MAXPREVLINE];  // parsed and previous lines
+  std::vector<bool> urlline;      // mask for url detection
   int checkurl;
   int actual;  // actual line
   int head;    // head position
   int token;   // begin of token
   int state;   // state of automata
   int utf8;    // UTF-8 character encoding
-  int next_char(char* line, int* pos);
+  int next_char(const char* line, int* pos);
   const w_char* wordchars_utf16;
   int wclen;
 
@@ -86,22 +88,22 @@ class TextParser {
   void init(const w_char* wordchars, int len);
   virtual ~TextParser();
 
-  void put_line(char* line);
-  char* get_line();
-  char* get_prevline(int n);
-  virtual char* next_token();
+  void put_line(const char* line);
+  std::string get_line() const;
+  std::string get_prevline(int n) const;
+  virtual bool next_token(std::string&);
   virtual int change_token(const char* word);
   void set_url_checking(int check);
 
   int get_tokenpos();
   int is_wordchar(const char* w);
   inline int is_utf8() { return utf8; }
-  const char* get_latin1(char* s);
+  const char* get_latin1(const char* s);
   char* next_char();
   int tokenize_urls();
   void check_urls();
   int get_url(int token_pos, int* head);
-  char* alloc_token(int token, int* head);
+  bool alloc_token(int token, int* head, std::string& out);
 };
 
 #endif

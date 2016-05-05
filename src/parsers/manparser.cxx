@@ -62,7 +62,7 @@ ManParser::ManParser(const w_char* wordchars, int len) {
 
 ManParser::~ManParser() {}
 
-char* ManParser::next_token() {
+bool ManParser::next_token(std::string& t) {
   for (;;) {
     switch (state) {
       case 1:  // command arguments
@@ -78,7 +78,7 @@ char* ManParser::next_token() {
         }
       // no break
       case 2:  // non word chars
-        if (is_wordchar(line[actual] + head)) {
+        if (is_wordchar(line[actual].c_str() + head)) {
           state = 3;
           token = head;
         } else if ((line[actual][head] == '\\') &&
@@ -88,17 +88,16 @@ char* ManParser::next_token() {
         }
         break;
       case 3:  // wordchar
-        if (!is_wordchar(line[actual] + head)) {
+        if (!is_wordchar(line[actual].c_str() + head)) {
           state = 2;
-          char* t = alloc_token(token, &head);
-          if (t)
-            return t;
+          if (alloc_token(token, &head, t))
+            return true;
         }
         break;
     }
-    if (next_char(line[actual], &head)) {
+    if (next_char(line[actual].c_str(), &head)) {
       state = 0;
-      return NULL;
+      return false;
     }
   }
 }
