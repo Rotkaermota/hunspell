@@ -49,6 +49,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -58,13 +59,12 @@
 
 int main(int argc, char** argv) {
   int i;
-  int al, wl;
+  int al;
 
   FILE* wrdlst;
   FILE* afflst;
 
   char *wf, *af;
-  char* ap;
   char ts[MAX_LN_LEN];
 
   (void)argc;
@@ -129,7 +129,7 @@ int main(int argc, char** argv) {
   while (fgets(ts, MAX_LN_LEN - 1, wrdlst)) {
     mychomp(ts);
     /* split each line into word and affix char strings */
-    ap = strchr(ts, '/');
+    char* ap = strchr(ts, '/');
     if (ap) {
       *ap = '\0';
       ap++;
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
       ap = NULL;
     }
 
-    wl = strlen(ts);
+    int wl = strlen(ts);
 
     numwords = 0;
     wlist[numwords].word = mystrdup(ts);
@@ -166,14 +166,13 @@ int parse_aff_file(FILE* afflst) {
   int numents = 0;
   char achar = '\0';
   short ff = 0;
-  char ft;
   struct affent* ptr = NULL;
   struct affent* nptr = NULL;
   char* line = (char*)malloc(MAX_LN_LEN);
 
   while (fgets(line, MAX_LN_LEN, afflst)) {
     mychomp(line);
-    ft = ' ';
+    char ft = ' ';
     fprintf(stderr, "parsing line: %s\n", line);
     if (strncmp(line, "FULLSTRIP", 9) == 0)
       fullstrip = 1;
@@ -314,7 +313,6 @@ void encodeit(struct affent* ptr, char* cs) {
   int nc;
   int neg;
   int grp;
-  unsigned char c;
   int n;
   int ec;
   int nm;
@@ -338,7 +336,7 @@ void encodeit(struct affent* ptr, char* cs) {
     return;
   }
   while (i < nc) {
-    c = *((unsigned char*)(cs + i));
+    unsigned char c = *((unsigned char*)(cs + i));
     if (c == '[') {
       grp = 1;
       c = 0;
@@ -470,9 +468,7 @@ void suf_add(const char* word, int len, struct affent* ep, int num) {
 
 int expand_rootword(const char* ts, int wl, const char* ap) {
   int i;
-  int j;
   int nh = 0;
-  int nwl;
 
   for (i = 0; i < numsfx; i++) {
     if (strchr(ap, (stable[i].aep)->achar)) {
@@ -483,12 +479,12 @@ int expand_rootword(const char* ts, int wl, const char* ap) {
   nh = numwords;
 
   if (nh > 1) {
-    for (j = 1; j < nh; j++) {
+    for (int j = 1; j < nh; j++) {
       if (wlist[j].pallow) {
         for (i = 0; i < numpfx; i++) {
           if (strchr(ap, (ptable[i].aep)->achar)) {
             if ((ptable[i].aep)->xpflg & XPRODUCT) {
-              nwl = strlen(wlist[j].word);
+              int nwl = strlen(wlist[j].word);
               pfx_add(wlist[j].word, nwl, ptable[i].aep, ptable[i].num);
             }
           }
@@ -516,9 +512,9 @@ char* mystrsep(char** stringp, const char delim) {
   if (n > 0) {
     char* dp = (char*)memchr(mp, (int)((unsigned char)delim), n);
     if (dp) {
-      int nc;
+      ptrdiff_t nc;
       *stringp = dp + 1;
-      nc = (int)((unsigned long)dp - (unsigned long)mp);
+      nc = dp - mp;
       rv = (char*)malloc(nc + 1);
       if (rv) {
         memcpy(rv, mp, nc);

@@ -677,7 +677,9 @@ void pipe_interface(Hunspell** pMS, int format, FILE* fileid, char* filename) {
         perror(gettext("Can't open inputfile"));
       else
         fprintf(stderr, gettext("Can't open %s.\n"), filename);
-      system((std::string("rmdir ") + odftmpdir).c_str());
+      if (system((std::string("rmdir ") + odftmpdir).c_str()) != 0) {
+        perror("temp dir delete failed");
+      }
       exit(1);
     }
     std::string file(odftmpdir);
@@ -685,13 +687,15 @@ void pipe_interface(Hunspell** pMS, int format, FILE* fileid, char* filename) {
     fileid = fopen(file.c_str(), "r");
     if (fileid == NULL) {
       perror(gettext("Can't open inputfile"));
-      system((std::string("rmdir ") + odftmpdir).c_str());
+      if (system((std::string("rmdir ") + odftmpdir).c_str()) != 0) {
+        perror("temp dir delete failed");
+      }
       exit(1);
     }
   }
 
   if (filter_mode == NORMAL) {
-    fprintf(stdout, gettext(HUNSPELL_HEADING));
+    fprintf(stdout, "%s", gettext(HUNSPELL_HEADING));
     fprintf(stdout, HUNSPELL_VERSION);
     const std::string& version = pMS[0]->get_version();
     if (!version.empty())
@@ -752,7 +756,7 @@ nextline:
           if (HOME) {
             sbuf.append(HOME);
           } else {
-            fprintf(stderr, gettext("error - missing HOME variable\n"));
+            fprintf(stderr, "%s", gettext("error - missing HOME variable\n"));
             continue;
           }
 #ifndef WIN32
@@ -790,7 +794,7 @@ nextline:
         mystrrep(token, ENTITY_APOS, "'");
         switch (filter_mode) {
           case BADWORD: {
-            if (!check(pMS, &d, token.c_str(), NULL, NULL)) {
+            if (!check(pMS, &d, token, NULL, NULL)) {
               bad = 1;
               if (!printgood)
                 fprintf(stdout, "%s\n", token.c_str());
@@ -924,7 +928,7 @@ nextline:
               if (wlst.empty()) {
                 fprintf(stdout, "# %s %d", token.c_str(), char_offset);
               } else {
-                fprintf(stdout, "& %s %ld %d: ", token.c_str(), wlst.size(), char_offset);
+                fprintf(stdout, "& %s %lu %d: ", token.c_str(), wlst.size(), char_offset);
                 fprintf(stdout, "%s", chenc(wlst[0], dic_enc[d], io_enc).c_str());
               }
               for (size_t j = 1; j < wlst.size(); ++j) {
@@ -964,7 +968,7 @@ nextline:
                 fprintf(stdout, "# %s %d", chenc(token, io_enc, ui_enc).c_str(),
                         char_offset);
               } else {
-                fprintf(stdout, "& %s %ld %d: ", chenc(token, io_enc, ui_enc).c_str(),
+                fprintf(stdout, "& %s %lu %d: ", chenc(token, io_enc, ui_enc).c_str(),
                         wlst.size(), char_offset);
                 fprintf(stdout, "%s", chenc(wlst[0], dic_enc[d], ui_enc).c_str());
               }
@@ -1814,60 +1818,51 @@ int main(int argc, char** argv) {
     else if (strcmp(argv[i], "-P") == 0)
       argstate = 4;
     else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
-      fprintf(stderr, gettext("Usage: hunspell [OPTION]... [FILE]...\n"));
-      fprintf(stderr, gettext("Check spelling of each FILE. Without FILE, "
+      fprintf(stderr, "%s", gettext("Usage: hunspell [OPTION]... [FILE]...\n"));
+      fprintf(stderr, "%s", gettext("Check spelling of each FILE. Without FILE, "
                               "check standard input.\n\n"));
-      fprintf(stderr, gettext("  -1\t\tcheck only first field in lines "
+      fprintf(stderr, "%s", gettext("  -1\t\tcheck only first field in lines "
                               "(delimiter = tabulator)\n"));
-      fprintf(stderr, gettext("  -a\t\tIspell's pipe interface\n"));
-      fprintf(stderr, gettext("  --check-url\tcheck URLs, e-mail addresses and "
+      fprintf(stderr, "%s", gettext("  -a\t\tIspell's pipe interface\n"));
+      fprintf(stderr, "%s", gettext("  --check-url\tcheck URLs, e-mail addresses and "
                               "directory paths\n"));
       fprintf(
-          stderr,
+          stderr, "%s",
           gettext(
               "  --check-apostrophe\tcheck Unicode typographic apostrophe\n"));
-      fprintf(stderr,
+      fprintf(stderr, "%s",
               gettext("  -d d[,d2,...]\tuse d (d2 etc.) dictionaries\n"));
-      fprintf(stderr, gettext("  -D\t\tshow available dictionaries\n"));
-      fprintf(stderr, gettext("  -G\t\tprint only correct words or lines\n"));
-      fprintf(stderr, gettext("  -h, --help\tdisplay this help and exit\n"));
-      fprintf(stderr, gettext("  -H\t\tHTML input file format\n"));
-      fprintf(stderr, gettext("  -i enc\tinput encoding\n"));
-      fprintf(stderr, gettext("  -l\t\tprint misspelled words\n"));
-      fprintf(stderr, gettext("  -L\t\tprint lines with misspelled words\n"));
-      fprintf(stderr,
+      fprintf(stderr, "%s", gettext("  -D\t\tshow available dictionaries\n"));
+      fprintf(stderr, "%s", gettext("  -G\t\tprint only correct words or lines\n"));
+      fprintf(stderr, "%s", gettext("  -h, --help\tdisplay this help and exit\n"));
+      fprintf(stderr, "%s", gettext("  -H\t\tHTML input file format\n"));
+      fprintf(stderr, "%s", gettext("  -i enc\tinput encoding\n"));
+      fprintf(stderr, "%s", gettext("  -l\t\tprint misspelled words\n"));
+      fprintf(stderr, "%s", gettext("  -L\t\tprint lines with misspelled words\n"));
+      fprintf(stderr, "%s",
               gettext("  -m \t\tanalyze the words of the input text\n"));
-      fprintf(stderr, gettext("  -n\t\tnroff/troff input file format\n"));
+      fprintf(stderr, "%s", gettext("  -n\t\tnroff/troff input file format\n"));
       fprintf(
-          stderr,
+          stderr, "%s",
           gettext(
               "  -O\t\tOpenDocument (ODF or Flat ODF) input file format\n"));
-      fprintf(stderr, gettext("  -p dict\tset dict custom dictionary\n"));
-      fprintf(stderr,
+      fprintf(stderr, "%s", gettext("  -p dict\tset dict custom dictionary\n"));
+      fprintf(stderr, "%s",
               gettext("  -r\t\twarn of the potential mistakes (rare words)\n"));
       fprintf(
-          stderr,
+          stderr, "%s",
           gettext("  -P password\tset password for encrypted dictionaries\n"));
-      fprintf(stderr, gettext("  -s \t\tstem the words of the input text\n"));
-      fprintf(stderr, gettext("  -S \t\tsuffix words of the input text\n"));
-      fprintf(stderr, gettext("  -t\t\tTeX/LaTeX input file format\n"));
-      // experimental functions: missing Unicode support
-      //			fprintf(stderr,gettext("  -u\t\tshow typical
-      //misspellings\n"));
-      //			fprintf(stderr,gettext("  -u2\t\tprint typical
-      //misspellings in sed format\n"));
-      //			fprintf(stderr,gettext("  -u3\t\tprint typical
-      //misspellings in gcc error format\n"));
-      //			fprintf(stderr,gettext("  -U\t\tautomatic
-      //correction of typical misspellings to stdout\n"));
-      fprintf(stderr, gettext("  -v, --version\tprint version number\n"));
-      fprintf(stderr,
+      fprintf(stderr, "%s", gettext("  -s \t\tstem the words of the input text\n"));
+      fprintf(stderr, "%s", gettext("  -S \t\tsuffix words of the input text\n"));
+      fprintf(stderr, "%s", gettext("  -t\t\tTeX/LaTeX input file format\n"));
+      fprintf(stderr, "%s", gettext("  -v, --version\tprint version number\n"));
+      fprintf(stderr, "%s",
               gettext("  -vv\t\tprint Ispell compatible version number\n"));
-      fprintf(stderr, gettext("  -w\t\tprint misspelled words (= lines) from "
+      fprintf(stderr, "%s", gettext("  -w\t\tprint misspelled words (= lines) from "
                               "one word/line input.\n"));
-      fprintf(stderr, gettext("  -X\t\tXML input file format\n\n"));
+      fprintf(stderr, "%s", gettext("  -X\t\tXML input file format\n\n"));
       fprintf(
-          stderr,
+          stderr, "%s",
           gettext(
               "Example: hunspell -d en_US file.txt    # interactive spelling\n"
               "         hunspell -i utf-8 file.txt    # check UTF-8 encoded "
@@ -1884,20 +1879,20 @@ int main(int argc, char** argv) {
               "         # 3 Use this personal dictionary to fix the deleted "
               "words:\n\n"
               "         hunspell -p words *.odt\n\n"));
-      fprintf(stderr, gettext("Bug reports: http://hunspell.github.io/\n"));
+      fprintf(stderr, "%s", gettext("Bug reports: http://hunspell.github.io/\n"));
       exit(0);
     } else if ((strcmp(argv[i], "-vv") == 0) || (strcmp(argv[i], "-v") == 0) ||
                (strcmp(argv[i], "--version") == 0)) {
-      fprintf(stdout, gettext(HUNSPELL_PIPE_HEADING));
+      fprintf(stdout, "%s", gettext(HUNSPELL_PIPE_HEADING));
       fprintf(stdout, "\n");
       if (strcmp(argv[i], "-vv") != 0) {
-        fprintf(stdout,
+        fprintf(stdout, "%s",
                 gettext("\nCopyright (C) 2002-2014 L\303\241szl\303\263 "
                         "N\303\251meth. License: MPL/GPL/LGPL.\n\n"
                         "Based on OpenOffice.org's Myspell library.\n"
                         "Myspell's copyright (C) Kevin Hendricks, 2001-2002, "
                         "License: BSD.\n\n"));
-        fprintf(stdout, gettext("This is free software; see the source for "
+        fprintf(stdout, "%s", gettext("This is free software; see the source for "
                                 "copying conditions.  There is NO\n"
                                 "warranty; not even for MERCHANTABILITY or "
                                 "FITNESS FOR A PARTICULAR PURPOSE,\n"
@@ -2060,7 +2055,7 @@ int main(int argc, char** argv) {
   if (showpath) {
     fprintf(stderr, gettext("SEARCH PATH:\n%s\n"), path);
     fprintf(
-        stderr,
+        stderr, "%s",
         gettext(
             "AVAILABLE DICTIONARIES (path is not mandatory for -d option):\n"));
     search(path, NULL, NULL);
@@ -2159,7 +2154,7 @@ int main(int argc, char** argv) {
         exit(1);
       }
     }
-  } else if (filter_mode == NORMAL) {
+  } else /*filter_mode == NORMAL*/ {
 #ifdef HAVE_CURSES_H
     initscr();
     cbreak();
@@ -2183,7 +2178,7 @@ int main(int argc, char** argv) {
     endwin();
 #else
     fprintf(
-        stderr,
+        stderr, "%s",
         gettext(
             "Hunspell has been compiled without Ncurses user interface.\n"));
 #endif

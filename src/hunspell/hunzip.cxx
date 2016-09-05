@@ -59,7 +59,7 @@ int Hunzip::fail(const char* err, const char* par) {
 }
 
 Hunzip::Hunzip(const char* file, const char* key)
-    : bufsiz(0), lastbit(0), inc(0), inbits(0), outc(0), dec(NULL) {
+    : bufsiz(0), lastbit(0), inc(0), inbits(0), outc(0) {
   in[0] = out[0] = line[0] = '\0';
   filename = mystrdup(file);
   if (getcode(key) == -1)
@@ -70,7 +70,7 @@ Hunzip::Hunzip(const char* file, const char* key)
 
 int Hunzip::getcode(const char* key) {
   unsigned char c[2];
-  int i, j, n, p;
+  int i, j, n;
   int allocatedbit = BASEBITREC;
   const char* enc = key;
 
@@ -115,9 +115,7 @@ int Hunzip::getcode(const char* key) {
   }
 
   n = ((int)c[0] << 8) + c[1];
-  dec = (struct bit*)malloc(BASEBITREC * sizeof(struct bit));
-  if (!dec)
-    return fail(MSG_MEMORY, filename);
+  dec.resize(BASEBITREC);
   dec[0].v[0] = 0;
   dec[0].v[1] = 0;
 
@@ -149,7 +147,7 @@ int Hunzip::getcode(const char* key) {
           enc = key;
         in[j] ^= *enc;
       }
-    p = 0;
+    int p = 0;
     for (j = 0; j < l; j++) {
       int b = (in[j / 8] & (1 << (7 - (j % 8)))) ? 1 : 0;
       int oldp = p;
@@ -158,7 +156,7 @@ int Hunzip::getcode(const char* key) {
         lastbit++;
         if (lastbit == allocatedbit) {
           allocatedbit += BASEBITREC;
-          dec = (struct bit*)realloc(dec, allocatedbit * sizeof(struct bit));
+          dec.resize(allocatedbit);
         }
         dec[lastbit].v[0] = 0;
         dec[lastbit].v[1] = 0;
@@ -173,8 +171,6 @@ int Hunzip::getcode(const char* key) {
 }
 
 Hunzip::~Hunzip() {
-  if (dec)
-    free(dec);
   if (filename)
     free(filename);
 }

@@ -129,13 +129,13 @@ static struct {
 #define PATTERN_LEN (sizeof(PATTERN) / sizeof(PATTERN[0]))
 
 LaTeXParser::LaTeXParser(const char* wordchars)
-    : pattern_num(0), depth(0), arg(0), opt(0) {
-  init(wordchars);
+    : TextParser(wordchars)
+    , pattern_num(0), depth(0), arg(0), opt(0) {
 }
 
 LaTeXParser::LaTeXParser(const w_char* wordchars, int len)
-    : pattern_num(0), depth(0), arg(0), opt(0) {
-  init(wordchars, len);
+    : TextParser(wordchars, len)
+    , pattern_num(0), depth(0), arg(0), opt(0) {
 }
 
 LaTeXParser::~LaTeXParser() {}
@@ -202,9 +202,6 @@ bool LaTeXParser::next_token(std::string& t) {
             break;
           }
           state = 3;
-        } else if (line[actual][head] == '%') {
-          if ((head == 0) || (line[actual][head - 1] != '\\'))
-            state = 5;
         }
         break;
       case 1:  // wordchar

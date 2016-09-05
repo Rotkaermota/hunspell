@@ -59,8 +59,7 @@
 class ManParser : public TextParser {
  protected:
  public:
-  ManParser();
-  ManParser(const char* wc);
+  explicit ManParser(const char* wc);
   ManParser(const w_char* wordchars, int len);
   virtual ~ManParser();
 
