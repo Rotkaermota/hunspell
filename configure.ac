@@ -6,7 +6,7 @@ m4_pattern_allow
 AC_PREREQ(2.59)
 AC_INIT([hunspell],[1.5.0],[nemeth@numbertext.org])
 
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_HOST
 AC_SUBST(XFAILED)
 
 AM_INIT_AUTOMAKE(hunspell, 1.5.0)
@@ -41,7 +41,7 @@ AC_CHECK_FUNCS([memchr setlocale strchr strstr])
 
 dnl internationalization macros
 AM_GNU_GETTEXT
-AM_GNU_GETTEXT_VERSION(0.17)
+AM_GNU_GETTEXT_REQUIRE_VERSION(0.17)
 
 AC_ARG_WITH(warnings,[  --with-warnings         compile with warning messages], [
      AC_DEFINE(HUNSPELL_WARNING_ON,1,"Define if you need warning messages")
