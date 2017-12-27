@@ -482,29 +482,32 @@ void uniqlist(std::vector<std::string>& list) {
 
 w_char upper_utf(w_char u, int langnum) {
   unsigned short idx = (u.h << 8) + u.l;
-  if (idx != unicodetoupper(idx, langnum)) {
-    u.h = (unsigned char)(unicodetoupper(idx, langnum) >> 8);
-    u.l = (unsigned char)(unicodetoupper(idx, langnum) & 0x00FF);
+  unsigned short upridx = unicodetoupper(idx, langnum);
+  if (idx != upridx) {
+    u.h = (unsigned char)(upridx >> 8);
+    u.l = (unsigned char)(upridx & 0x00FF);
   }
   return u;
 }
 
 w_char lower_utf(w_char u, int langnum) {
   unsigned short idx = (u.h << 8) + u.l;
-  if (idx != unicodetolower(idx, langnum)) {
-    u.h = (unsigned char)(unicodetolower(idx, langnum) >> 8);
-    u.l = (unsigned char)(unicodetolower(idx, langnum) & 0x00FF);
+  unsigned short lwridx = unicodetolower(idx, langnum);
+  if (idx != lwridx) {
+    u.h = (unsigned char)(lwridx >> 8);
+    u.l = (unsigned char)(lwridx & 0x00FF);
   }
   return u;
 }
 
 std::vector<w_char>& mkallsmall_utf(std::vector<w_char>& u,
-                                    int langnum) {
+                                          int langnum) {
   for (size_t i = 0; i < u.size(); ++i) {
     unsigned short idx = (u[i].h << 8) + u[i].l;
-    if (idx != unicodetolower(idx, langnum)) {
-      u[i].h = (unsigned char)(unicodetolower(idx, langnum) >> 8);
-      u[i].l = (unsigned char)(unicodetolower(idx, langnum) & 0x00FF);
+    unsigned short lwridx = unicodetolower(idx, langnum);
+    if (idx != lwridx) {
+      u[i].h = (unsigned char)(lwridx >> 8);
+      u[i].l = (unsigned char)(lwridx & 0x00FF);
     }
   }
   return u;
@@ -513,9 +516,10 @@ std::vector<w_char>& mkallsmall_utf(std::vector<w_char>& u,
 std::vector<w_char>& mkallcap_utf(std::vector<w_char>& u, int langnum) {
   for (size_t i = 0; i < u.size(); i++) {
     unsigned short idx = (u[i].h << 8) + u[i].l;
-    if (idx != unicodetoupper(idx, langnum)) {
-      u[i].h = (unsigned char)(unicodetoupper(idx, langnum) >> 8);
-      u[i].l = (unsigned char)(unicodetoupper(idx, langnum) & 0x00FF);
+    unsigned short upridx = unicodetoupper(idx, langnum);
+    if (idx != upridx) {
+      u[i].h = (unsigned char)(upridx >> 8);
+      u[i].l = (unsigned char)(upridx & 0x00FF);
     }
   }
   return u;
@@ -524,9 +528,10 @@ std::vector<w_char>& mkallcap_utf(std::vector<w_char>& u, int langnum) {
 std::vector<w_char>& mkinitcap_utf(std::vector<w_char>& u, int langnum) {
   if (!u.empty()) {
     unsigned short idx = (u[0].h << 8) + u[0].l;
-    if (idx != unicodetoupper(idx, langnum)) {
-      u[0].h = (unsigned char)(unicodetoupper(idx, langnum) >> 8);
-      u[0].l = (unsigned char)(unicodetoupper(idx, langnum) & 0x00FF);
+    unsigned short upridx = unicodetoupper(idx, langnum);
+    if (idx != upridx) {
+      u[0].h = (unsigned char)(upridx >> 8);
+      u[0].l = (unsigned char)(upridx & 0x00FF);
     }
   }
   return u;
@@ -535,9 +540,10 @@ std::vector<w_char>& mkinitcap_utf(std::vector<w_char>& u, int langnum) {
 std::vector<w_char>& mkinitsmall_utf(std::vector<w_char>& u, int langnum) {
   if (!u.empty()) {
     unsigned short idx = (u[0].h << 8) + u[0].l;
-    if (idx != unicodetolower(idx, langnum)) {
-      u[0].h = (unsigned char)(unicodetolower(idx, langnum) >> 8);
-      u[0].l = (unsigned char)(unicodetolower(idx, langnum) & 0x00FF);
+    unsigned short lwridx = unicodetolower(idx, langnum);
+    if (idx != lwridx) {
+      u[0].h = (unsigned char)(lwridx >> 8);
+      u[0].l = (unsigned char)(lwridx & 0x00FF);
     }
   }
   return u;
@@ -665,12 +671,17 @@ int get_captype_utf8(const std::vector<w_char>& word, int langnum) {
   size_t ncap = 0;
   size_t nneutral = 0;
   size_t firstcap = 0;
-  for (size_t i = 0; i < word.size(); ++i) {
-    unsigned short idx = (word[i].h << 8) + word[i].l;
-    if (idx != unicodetolower(idx, langnum))
+
+  std::vector<w_char>::const_iterator it = word.begin();
+  std::vector<w_char>::const_iterator it_end = word.end();
+  while (it != it_end) {
+    unsigned short idx = (it->h << 8) + it->l;
+    unsigned short lwridx = unicodetolower(idx, langnum);
+    if (idx != lwridx)
       ncap++;
-    if (unicodetoupper(idx, langnum) == unicodetolower(idx, langnum))
+    if (unicodetoupper(idx, langnum) == lwridx)
       nneutral++;
+    ++it;
   }
   if (ncap) {
     unsigned short idx = (word[0].h << 8) + word[0].l;

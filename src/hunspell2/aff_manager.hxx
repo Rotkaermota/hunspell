@@ -27,20 +27,17 @@
 #ifndef HUNSPELL_AFF_MANAGER_HXX
 #define HUNSPELL_AFF_MANAGER_HXX
 
+#include "string_utils.hxx"
 #include <string>
 #include <vector>
 #include <utility>
-#include <iostream>
-#include <locale>
-#include <codecvt>
+#include <istream>
 
-namespace hunspell
-{
-enum flag_type_t {single_char, double_char, number};
+namespace hunspell {
+enum flag_type_t {single_char, double_char, number, utf_8};
 
 
-struct aff_data
-{
+struct aff_data {
 	using string = std::string;
 	using u16string = std::u16string;
 	template <class T>
@@ -53,8 +50,8 @@ struct aff_data
 	bool complex_prefixes;
 	string language_code;
 	string ignore_chars;
-	std::vector<u16string> flag_aliases;
-	std::vector<u16string> morphological_aliases;
+	vector<u16string> flag_aliases;
+	vector<vector<string>> morphological_aliases;
 
 	//suggestion options
 	string keyboard_layout;
@@ -133,16 +130,13 @@ struct aff_data
 	//methods
 	bool parse(std::istream& in);
 
-	using utf8_to_ucs2_converter =
-		std::wstring_convert<std::codecvt_utf8<char16_t>,char16_t>;
-
 	u16string decode_flags(std::istream& in,
-		utf8_to_ucs2_converter& cv);
+	                       utf8_to_ucs2_converter& cv) const;
 
 	//u16string decode_flags(std::istream& in);
 
 	char16_t decode_single_flag(std::istream& in,
-		utf8_to_ucs2_converter& cv);
+	                            utf8_to_ucs2_converter& cv) const;
 
 	//char16_t decode_single_flag(std::istream& in);
 };

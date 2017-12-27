@@ -24,36 +24,23 @@
  * the Initial Developers. All Rights Reserved.
  */
 
-#ifndef HUNSPELL_DIC_MANAGER_HXX
-#define HUNSPELL_DIC_MANAGER_HXX
-
-#include "aff_manager.hxx"
-#include <string>
+#ifndef HUNSPELL_DIC_FINDER_HXX
+#define HUNSPELL_DIC_FINDER_HXX
 #include <vector>
-#include <istream>
-#include <unordered_map>
-
+#include <string>
+#include <utility>
 
 namespace hunspell {
 
-struct dic_data {
-	//word and flag vector
-	//efficient for short flag vectors
-	//for long flag vectors like in Korean dict
-	//we should keep pointers to the string in the affix aliases vector
-	//for now we will leave it like this
-	std::unordered_map<std::string, std::u16string> words;
 
-	//word and morphological data
-	//we keep them separate because morph data is generally absent
-	std::unordered_map<std::string, std::vector<std::string>> morph_data;
+std::vector<std::string> get_default_search_directories();
 
+void get_mozilla_directories(std::vector<std::string>& out);
 
-	//methods
-	//parses the dic data to hashtable
-	bool parse(std::istream& in, const aff_data& aff);
-};
+void get_libreoffice_directories(std::vector<std::string>& out);
+
+std::vector<std::pair<std::string, std::string>>
+	search_dirs_for_dicts(const std::vector<std::string>& dirs);
 
 }
-
 #endif

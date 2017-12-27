@@ -1,0 +1,2 @@
+--style=stroustrup -t -y --max-code-length=80
+--suffix=none #no backup, we already have git

@@ -1466,9 +1466,8 @@ int AffixMgr::defcpd_check(hentry*** words,
 }
 
 inline int AffixMgr::candidate_check(const char* word, int len) {
-  struct hentry* rv = NULL;
 
-  rv = lookup(word);
+  struct hentry* rv = lookup(word);
   if (rv)
     return 1;
 
@@ -2006,7 +2005,7 @@ struct hentry* AffixMgr::compound_check(const std::string& word,
             wordnum = oldwordnum2;
 
             // perhaps second word is a compound word (recursive call)
-            if (wordnum < maxwordnum) {
+            if (wordnum + 2 < maxwordnum) {
               rv = compound_check(st.substr(i), wordnum + 1,
                                   numsyllable, maxwordnum, wnum + 1, words, rwords, 0,
                                   is_sug, info);
@@ -2577,7 +2576,7 @@ int AffixMgr::compound_check_morph(const char* word,
         wordnum = oldwordnum2;
 
         // perhaps second word is a compound word (recursive call)
-        if ((wordnum < maxwordnum) && (ok == 0)) {
+        if ((wordnum + 2 < maxwordnum) && (ok == 0)) {
           compound_check_morph((word + i), strlen(word + i), wordnum + 1,
                                numsyllable, maxwordnum, wnum + 1, words, rwords, 0,
                                result, &presult);
@@ -3001,10 +3000,9 @@ struct hentry* AffixMgr::affix_check(const char* word,
                                      int len,
                                      const FLAG needflag,
                                      char in_compound) {
-  struct hentry* rv = NULL;
 
   // check all prefixes (also crossed with suffixes if allowed)
-  rv = prefix_check(word, len, in_compound, needflag);
+  struct hentry* rv = prefix_check(word, len, in_compound, needflag);
   if (rv)
     return rv;
 
@@ -3248,7 +3246,7 @@ int AffixMgr::expand_rootword(struct guessword* wlst,
     wlst[nh].word = mystrdup(ts);
     if (!wlst[nh].word)
       return 0;
-    wlst[nh].allow = (1 == 0);
+    wlst[nh].allow = false;
     wlst[nh].orig = NULL;
     nh++;
     // add special phonetic version
@@ -3256,7 +3254,7 @@ int AffixMgr::expand_rootword(struct guessword* wlst,
       wlst[nh].word = mystrdup(phon);
       if (!wlst[nh].word)
         return nh - 1;
-      wlst[nh].allow = (1 == 0);
+      wlst[nh].allow = false;
       wlst[nh].orig = mystrdup(ts);
       if (!wlst[nh].orig)
         return nh - 1;
@@ -3297,7 +3295,7 @@ int AffixMgr::expand_rootword(struct guessword* wlst,
               wlst[nh].word = mystrdup(prefix.c_str());
               if (!wlst[nh].word)
                 return nh - 1;
-              wlst[nh].allow = (1 == 0);
+              wlst[nh].allow = false;
               wlst[nh].orig = mystrdup(newword.c_str());
               if (!wlst[nh].orig)
                 return nh - 1;
@@ -3629,11 +3627,11 @@ bool AffixMgr::parse_cpdsyllable(const std::string& line, FileMgr* af) {
     HUNSPELL_WARNING(stderr,
                      "error: line %d: missing compoundsyllable information\n",
                      af->getlinenum());
-    return 1;
+    return false;
   }
   if (np == 2)
     cpdvowels = "AEIOUaeiou";
-  return 0;
+  return true;
 }
 
 /* parse in the typical fault correcting table */

@@ -75,6 +75,7 @@
 
 #include "hunvisapi.h"
 #include "w_char.hxx"
+#include "atypes.hxx"
 #include <string>
 #include <vector>
 
@@ -82,9 +83,12 @@
 
 #define MAXSUGGESTION 15
 #define MAXSHARPS 5
-#define MAXWORDLEN 176
 
-#if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1)
+#ifndef MAXWORDLEN
+#define MAXWORDLEN 100
+#endif
+
+#if defined __GNUC__ && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1))
 #  define H_DEPRECATED __attribute__((__deprecated__))
 #elif defined(_MSC_VER) && (_MSC_VER >= 1300)
 #  define H_DEPRECATED __declspec(deprecated)
@@ -195,10 +199,12 @@ class LIBHUNSPELL_DLL_EXPORTED Hunspell {
   /* other */
 
   /* get extra word characters definied in affix file for tokenization */
-  const std::string& get_wordchars() const;
+  const char* get_wordchars() const;
+  const std::string& get_wordchars_cpp() const;
   const std::vector<w_char>& get_wordchars_utf16() const;
 
-  const std::string& get_version() const;
+  const char* get_version() const;
+  const std::string& get_version_cpp() const;
 
   int get_langnum() const;
 

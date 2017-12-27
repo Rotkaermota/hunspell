@@ -53,6 +53,7 @@
 #include "atypes.hxx"
 #include "hunspell.hxx"
 #include "csutil.hxx"
+#include "hunzip.hxx"
 
 #define HUNSPELL_VERSION VERSION
 #define INPUTLEN 50
@@ -73,7 +74,7 @@
 #ifdef WIN32
 
 #define LIBDIR "C:\\Hunspell\\"
-#define USEROOODIR "Application Data\\OpenOffice.org 2\\user\\wordbook"
+#define USEROOODIR { "Application Data\\OpenOffice.org 2\\user\\wordbook" }
 #define OOODIR                                                 \
   "C:\\Program files\\OpenOffice.org 2.4\\share\\dict\\ooo\\;" \
   "C:\\Program files\\OpenOffice.org 2.3\\share\\dict\\ooo\\;" \
@@ -86,6 +87,13 @@
 #define DIRSEPCH '\\'
 #define DIRSEP "\\"
 #define PATHSEP ";"
+
+#ifdef __MINGW32__
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
+#endif
 
 #include "textparser.hxx"
 #include "htmlparser.hxx"
@@ -115,11 +123,11 @@
   "/usr/share/myspell:"       \
   "/usr/share/myspell/dicts:" \
   "/Library/Spelling"
-#define USEROOODIR                    \
-  ".openoffice.org/3/user/wordbook:"  \
-  ".openoffice.org2/user/wordbook:"   \
-  ".openoffice.org2.0/user/wordbook:" \
-  "Library/Spelling"
+#define USEROOODIR {                  \
+  ".openoffice.org/3/user/wordbook", \
+  ".openoffice.org2/user/wordbook",  \
+  ".openoffice.org2.0/user/wordbook",\
+  "Library/Spelling" }
 #define OOODIR                                       \
   "/opt/openoffice.org/basis3.0/share/dict/ooo:"     \
   "/usr/lib/openoffice.org/basis3.0/share/dict/ooo:" \
@@ -304,7 +312,7 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
 
   if (io_utf8) {
     const std::vector<w_char>& vec_wordchars_utf16 = pMS->get_wordchars_utf16();
-    const std::string& vec_wordchars = pMS->get_wordchars();
+    const std::string& vec_wordchars = pMS->get_wordchars_cpp();
     wordchars_utf16_len = vec_wordchars_utf16.size();
     wordchars_utf16 = wordchars_utf16_len ? &vec_wordchars_utf16[0] : NULL;
     if ((strcmp(denc, "UTF-8") != 0) && !vec_wordchars.empty()) {
@@ -362,7 +370,7 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
     *pletters = '\0';
 
     // UTF-8 wordchars -> 8 bit wordchars
-    const std::string& vec_wordchars = pMS->get_wordchars();
+    const std::string& vec_wordchars = pMS->get_wordchars_cpp();
     size_t len = vec_wordchars.size();
     if (len) {
       if ((strcmp(denc, "UTF-8") == 0)) {
@@ -393,7 +401,7 @@ TextParser* get_parser(int format, const char* extension, Hunspell* pMS) {
     io_utf8 = 1;
   } else {
     std::string casechars = get_casechars(denc);
-    std::string wchars = pMS->get_wordchars();
+    std::string wchars = pMS->get_wordchars_cpp();
     wordchars = casechars + wchars;
   }
   io_enc = denc;
@@ -697,7 +705,7 @@ void pipe_interface(Hunspell** pMS, int format, FILE* fileid, char* filename) {
   if (filter_mode == NORMAL) {
     fprintf(stdout, "%s", gettext(HUNSPELL_HEADING));
     fprintf(stdout, HUNSPELL_VERSION);
-    const std::string& version = pMS[0]->get_version();
+    const std::string& version = pMS[0]->get_version_cpp();
     if (!version.empty())
       fprintf(stdout, " - %s", version.c_str());
     fprintf(stdout, "\n");
@@ -928,7 +936,7 @@ nextline:
               if (wlst.empty()) {
                 fprintf(stdout, "# %s %d", token.c_str(), char_offset);
               } else {
-                fprintf(stdout, "& %s %lu %d: ", token.c_str(), wlst.size(), char_offset);
+                fprintf(stdout, "& %s %u %d: ", token.c_str(), static_cast<unsigned int>(wlst.size()), char_offset);
                 fprintf(stdout, "%s", chenc(wlst[0], dic_enc[d], io_enc).c_str());
               }
               for (size_t j = 1; j < wlst.size(); ++j) {
@@ -968,8 +976,8 @@ nextline:
                 fprintf(stdout, "# %s %d", chenc(token, io_enc, ui_enc).c_str(),
                         char_offset);
               } else {
-                fprintf(stdout, "& %s %lu %d: ", chenc(token, io_enc, ui_enc).c_str(),
-                        wlst.size(), char_offset);
+                fprintf(stdout, "& %s %u %d: ", chenc(token, io_enc, ui_enc).c_str(),
+                        static_cast<unsigned int>(wlst.size()), char_offset);
                 fprintf(stdout, "%s", chenc(wlst[0], dic_enc[d], ui_enc).c_str());
               }
               for (size_t j = 1; j < wlst.size(); ++j) {
@@ -1130,19 +1138,19 @@ void dialogscreen(TextParser* parser,
 
   // handle long lines and tabulators
   std::string lines[MAXPREVLINE];
-  std::string pPrevLine;
+  std::string prevLine;
   for (int i = 0; i < MAXPREVLINE; i++) {
-    pPrevLine = parser->get_prevline(i);
-    expand_tab(lines[i], chenc(pPrevLine, io_enc, ui_enc));
+    prevLine = parser->get_prevline(i);
+    expand_tab(lines[i], chenc(prevLine, io_enc, ui_enc));
   }
 
-  pPrevLine = parser->get_prevline(0);
-  std::string line = pPrevLine.substr(0, parser->get_tokenpos());
+  prevLine = parser->get_prevline(0);
+  std::string line = prevLine.substr(0, parser->get_tokenpos());
   std::string line2;
   int tokenbeg = expand_tab(line2, chenc(line, io_enc, ui_enc));
 
-  pPrevLine = mystrdup(parser->get_prevline(0).c_str());
-  line = pPrevLine.substr(0, parser->get_tokenpos() + token.size());
+  prevLine = parser->get_prevline(0);
+  line = prevLine.substr(0, parser->get_tokenpos() + token.size());
   int tokenend = expand_tab(line2, chenc(line, io_enc, ui_enc));
 
   int rowindex = (tokenend - 1) / x;
@@ -1236,7 +1244,7 @@ int dialog(TextParser* parser,
       case '8':
       case '9':
         modified = 1;
-        if ((firstletter != '\0') && (firstletter == '1')) {
+        if (firstletter == '1') {
           c += 10;
         }
         c -= '0';
@@ -1589,7 +1597,7 @@ void interactive_interface(Hunspell** pMS, char* filename, int format) {
       else
         fprintf(stderr, gettext("Can't open %s.\n"), filename);
       endwin();
-      system((std::string("rmdir ") + odftmpdir).c_str());
+      (void)system((std::string("rmdir ") + odftmpdir).c_str());
       exit(1);
     }
     odffilename = filename;
@@ -1600,7 +1608,7 @@ void interactive_interface(Hunspell** pMS, char* filename, int format) {
     if (!text) {
       perror(gettext("Can't open inputfile"));
       endwin();
-      system((std::string("rmdir ") + odftmpdir).c_str());
+      (void)system((std::string("rmdir ") + odftmpdir).c_str());
       exit(1);
     }
   }
@@ -1705,7 +1713,7 @@ char* exist2(char* dir, int len, const char* name, const char* ext) {
   return NULL;
 }
 
-#ifndef WIN32
+#if !defined(WIN32) || defined(__MINGW32__)
 int listdicpath(char* dir, int len) {
   std::string buf;
   const char* sep = (len == 0) ? "" : DIRSEP;
@@ -1740,7 +1748,7 @@ char* search(char* begin, char* name, const char* ext) {
     if (name) {
       res = exist2(begin, end - begin, name, ext);
     } else {
-#ifndef WIN32
+#if !defined(WIN32) || defined(__MINGW32__)
       listdicpath(begin, end - begin);
 #endif
     }
@@ -2043,8 +2051,15 @@ int main(int argc, char** argv) {
     }
     path_std_str.append(LIBDIR).append(PATHSEP);
     if (HOME) {
-      path_std_str.append(HOME).append(DIRSEP).append(USEROOODIR)
-                  .append(PATHSEP).append(OOODIR);
+      const char * userooodir[] = USEROOODIR;
+      for(size_t i = 0; i < sizeof(userooodir)/sizeof(userooodir[0]); ++i) {
+        path_std_str += HOME;
+#ifndef _WIN32
+        path_std_str += DIRSEP;
+#endif
+        path_std_str.append(userooodir[i]).append(PATHSEP);
+      }
+      path_std_str.append(OOODIR);
     }
     path = mystrdup(path_std_str.c_str());
   }
@@ -2087,6 +2102,9 @@ int main(int argc, char** argv) {
           pMS[dmax] = new Hunspell(aff, dic, key);
           dic_enc[dmax] = pMS[dmax]->get_dict_encoding().c_str();
           dmax++;
+          if (showpath) {
+            fprintf(stderr, gettext("LOADED DICTIONARY:\n%s\n%s\n"), aff, dic);
+          }
         } else
           fprintf(stderr, gettext("error - %s exceeds dictionary limit.\n"),
                   dicname2);

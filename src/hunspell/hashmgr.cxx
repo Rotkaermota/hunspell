@@ -335,12 +335,16 @@ int HashMgr::add_hidden_capitalized_word(const std::string& word,
 }
 
 // detect captype and modify word length for UTF-8 encoding
-int HashMgr::get_clen_and_captype(const std::string& word, int* captype) {
+int HashMgr::get_clen_and_captype(const std::string& word, int* captype, std::vector<w_char> &workbuf) {
   int len;
-    std::vector<w_char> dest_utf;
-    len = u8_u16(dest_utf, word);
-    *captype = get_captype_utf8(dest_utf, langnum);
+    len = u8_u16(workbuf, word);
+    *captype = get_captype_utf8(workbuf, langnum);
   return len;
+}
+
+int HashMgr::get_clen_and_captype(const std::string& word, int* captype) {
+  std::vector<w_char> workbuf;
+  return get_clen_and_captype(word, captype, workbuf);
 }
 
 // remove word (personal dictionary function for standalone applications)
@@ -494,6 +498,8 @@ int HashMgr::load_tables(const char* tpath, const char* key) {
   // loop through all words on much list and add to hash
   // table and create word and affix strings
 
+  std::vector<w_char> workbuf;
+
   while (dict->getline(ts)) {
     mychomp(ts);
     // split each line into word and morphological description
@@ -566,7 +572,7 @@ int HashMgr::load_tables(const char* tpath, const char* key) {
     }
 
     int captype;
-    int wcl = get_clen_and_captype(ts, &captype);
+    int wcl = get_clen_and_captype(ts, &captype, workbuf);
     const std::string *dp_str = dp.empty() ? NULL : &dp;
     // add the word and its index plus its capitalized form optionally
     if (add_word(ts, wcl, flags, al, dp_str, false) ||
@@ -610,8 +616,8 @@ int HashMgr::decode_flags(unsigned short** result, const std::string& flags, Fil
       if (!*result)
         return -1;
       for (int i = 0; i < len; i++) {
-        (*result)[i] = (((unsigned short)flags[i * 2]) << 8) +
-                       (unsigned short)flags[i * 2 + 1];
+        (*result)[i] = ((unsigned short)((unsigned char)flags[i * 2]) << 8) +
+                       (unsigned char)flags[i * 2 + 1];
       }
       break;
     }
@@ -693,8 +699,8 @@ bool HashMgr::decode_flags(std::vector<unsigned short>& result, const std::strin
       len /= 2;
       result.reserve(result.size() + len);
       for (size_t i = 0; i < len; ++i) {
-        result.push_back((((unsigned short)flags[i * 2]) << 8) +
-                         (unsigned short)flags[i * 2 + 1]);
+        result.push_back(((unsigned short)((unsigned char)flags[i * 2]) << 8) +
+                         (unsigned char)flags[i * 2 + 1]);
       }
       break;
     }
@@ -750,7 +756,7 @@ unsigned short HashMgr::decode_flag(const char* f) const {
   int i;
   switch (flag_mode) {
     case FLAG_LONG:
-      s = ((unsigned short)f[0] << 8) + (unsigned short)f[1];
+      s = ((unsigned short)((unsigned char)f[0]) << 8) + (unsigned char)f[1];
       break;
     case FLAG_NUM:
       i = atoi(f);

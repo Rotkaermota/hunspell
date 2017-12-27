@@ -225,7 +225,7 @@ size_t HunspellImpl::cleanword2(std::string& dest,
 
   // first skip over any leading blanks
   while (*q == ' ')
-    q++;
+    ++q;
 
   // now strip off any trailing periods (recording their presence)
   *pabbrev = 0;
@@ -258,7 +258,7 @@ void HunspellImpl::cleanword(std::string& dest,
 
   // first skip over any leading blanks
   while (*q == ' ')
-    q++;
+    ++q;
 
   // now strip off any trailing periods (recording their presence)
   *pabbrev = 0;
@@ -1146,7 +1146,11 @@ std::vector<std::string> HunspellImpl::stem(const std::string& word) {
   return stem(analyze(word));
 }
 
-const std::string& Hunspell::get_wordchars() const {
+const char* Hunspell::get_wordchars() const {
+  return m_Impl->get_wordchars().c_str();
+}
+
+const std::string& Hunspell::get_wordchars_cpp() const {
   return m_Impl->get_wordchars();
 }
 
@@ -1211,7 +1215,11 @@ int HunspellImpl::remove(const std::string& word) {
   return 0;
 }
 
-const std::string& Hunspell::get_version() const {
+const char* Hunspell::get_version() const {
+  return m_Impl->get_version().c_str();
+}
+
+const std::string& Hunspell::get_version_cpp() const {
   return m_Impl->get_version();
 }
 
@@ -1524,7 +1532,7 @@ std::string HunspellImpl::get_xml_par(const char* par) {
   if (end == '>')
     end = '<';
   else if (end != '\'' && end != '"')
-    return 0;  // bad XML
+    return dest;  // bad XML
   for (par++; *par != '\0' && *par != end; ++par) {
     dest.push_back(*par);
   }
@@ -1557,14 +1565,17 @@ bool HunspellImpl::input_conv(const std::string& word, std::string& dest) {
 // return the beginning of the element (attr == NULL) or the attribute
 const char* HunspellImpl::get_xml_pos(const char* s, const char* attr) {
   const char* end = strchr(s, '>');
-  const char* p = s;
   if (attr == NULL)
     return end;
-  do {
+  const char* p = s;
+  while (1) {
     p = strstr(p, attr);
     if (!p || p >= end)
       return 0;
-  } while (*(p - 1) != ' ' && *(p - 1) != '\n');
+    if (*(p - 1) == ' ' || *(p - 1) == '\n')
+      break;
+    p += strlen(attr);
+  }
   return p + strlen(attr);
 }
 
